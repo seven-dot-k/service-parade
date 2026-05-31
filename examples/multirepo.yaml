@@ -1,0 +1,36 @@
+# Example catalog for two existing local clones.
+repos:
+  - id: billing
+    path: ../billing
+    defaultBranch: main
+    owner: payments
+  - id: identity
+    path: ../identity
+    defaultBranch: main
+    owner: platform
+
+services:
+  - id: billing-api
+    repoId: billing
+    root: services/api
+    language: typescript
+    tags: [billing, api]
+    aliases: [billing, billing-api]
+    baseUrls: [http://billing-api]
+  - id: identity-api
+    repoId: identity
+    root: .
+    language: go
+    tags: [identity, accounts]
+    aliases: [identity, identity-api]
+    baseUrls: [http://identity-api]
+
+commands:
+  - name: test
+    run: npm test
+    scope: service
+    serviceId: billing-api
+  - name: test
+    run: go test ./...
+    scope: service
+    serviceId: identity-api

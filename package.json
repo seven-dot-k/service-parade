@@ -1,0 +1,35 @@
+{
+  "name": "@multi-repo/control-plane",
+  "version": "0.1.0",
+  "description": "A file-first multi-repo engineering control plane for agentic coding tools.",
+  "type": "module",
+  "bin": {
+    "multirepo": "./src/cli.ts"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.ts",
+    "check": "node --check src/cli.ts && tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "keywords": [
+    "multi-repo",
+    "agentic-coding",
+    "codex",
+    "claude-code",
+    "service-catalog"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@surrealdb/node": "3.0.3",
+    "better-sqlite3": "12.10.0",
+    "surrealdb": "2.0.3",
+    "tree-sitter": "0.21.1",
+    "tree-sitter-c-sharp": "0.23.1",
+    "tree-sitter-typescript": "0.23.2"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "7.6.13"
+  }
+}
