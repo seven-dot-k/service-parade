@@ -11,9 +11,10 @@ import { planChangeSet } from "./planner.ts";
 import { renderChangeSet, renderVerification, renderWorkspace } from "./render.ts";
 import type { ChangeSet, NormalizedCatalog } from "./types.ts";
 import { verifyPlan } from "./verify.ts";
-import { enrichGraph, listPendingLinks, loadDependencyArtifact, saveLinkDecision } from "./graph/enrich.ts";
+import { enrichGraph, saveLinkDecision } from "./graph/enrich.ts";
 import { indexGraph } from "./graph/indexer.ts";
 import { closeProjection } from "./graph/projection.ts";
+import { getGraphStatus, listDependencies, listEndpoints, listPendingLinkDetails, queryTransitiveImpact } from "./graph/query.ts";
 import { assembleWorkspaceBundle } from "./workspace/index.ts";
 import { startMultiRepoStdioServer } from "./mcp/stdio.ts";
 
@@ -131,16 +132,49 @@ async function runGraphCommand(root: string, args: Args): Promise<void> {
     return;
   }
   if (action === "deps") {
-    const artifact = await loadDependencyArtifact(root);
-    if (!artifact) {
-      throw new Error('No dependency graph found. Run "multirepo graph index" and "multirepo graph enrich" first.');
-    }
+    const dependencies = await listDependencies(root, {
+      serviceId: optionalStringFlag(args.flags, "service"),
+      direction: optionalDirectionFlag(args.flags.direction)
+    });
     if (args.flags.json) {
-      process.stdout.write(stableJson(artifact));
+      process.stdout.write(stableJson(dependencies));
     } else {
-      print(artifact.dependencies.length > 0
-        ? artifact.dependencies.map((edge) => `${edge.sourceServiceId} -> ${edge.targetServiceId}: ${edge.httpMethod} ${edge.endpointPath} (${edge.reviewStatus})`).join("\n")
+      print(dependencies.length > 0
+        ? dependencies.map((edge) => `${edge.sourceServiceId} -> ${edge.targetServiceId}: ${edge.httpMethod} ${edge.endpointPath} (${edge.reviewStatus})`).join("\n")
         : "No accepted HTTP dependencies.");
+    }
+    return;
+  }
+  if (action === "status") {
+    const catalog = await loadNormalizedCatalog(root, args.flags.config);
+    const status = await getGraphStatus(root, catalog);
+    if (args.flags.json) {
+      process.stdout.write(stableJson(status));
+    } else {
+      print(`Graph status: indexed=${status.indexed} enriched=${status.enriched} fresh=${status.fresh} dependencies=${status.dependencies} pending=${status.pendingLinks}`);
+    }
+    return;
+  }
+  if (action === "impact") {
+    const serviceId = requirePositional(args.positionals, 1, "service id");
+    const impact = await queryTransitiveImpact(root, serviceId, optionalDepthFlag(args.flags.depth));
+    if (args.flags.json) {
+      process.stdout.write(stableJson(impact));
+    } else {
+      print(impact.impactedServices.length > 0
+        ? impact.impactedServices.map((service) => `${service.serviceId}: depth ${service.depth}`).join("\n")
+        : `No dependent services found for ${serviceId}.`);
+    }
+    return;
+  }
+  if (action === "endpoints") {
+    const endpoints = listEndpoints(root, { serviceId: optionalStringFlag(args.flags, "service") });
+    if (args.flags.json) {
+      process.stdout.write(stableJson(endpoints));
+    } else {
+      print(endpoints.length > 0
+        ? endpoints.map((endpoint) => `${endpoint.serviceId}: ${endpoint.httpMethod} ${endpoint.path} (${endpoint.file}:${endpoint.line})`).join("\n")
+        : "No indexed HTTP endpoints.");
     }
     return;
   }
@@ -154,12 +188,13 @@ async function runGraphCommand(root: string, args: Args): Promise<void> {
 async function runGraphLinksCommand(root: string, args: Args): Promise<void> {
   const action = args.positionals[1] ?? "list";
   if (action === "list") {
-    const links = listPendingLinks(root);
+    const catalog = await loadNormalizedCatalog(root, args.flags.config);
+    const links = listPendingLinkDetails(root, catalog);
     if (args.flags.json) {
       process.stdout.write(stableJson(links));
     } else {
       print(links.length > 0
-        ? links.map((link) => `${link.id}: ${link.reason} candidates=${link.candidateEndpointIds.join(",") || "none"}`).join("\n")
+        ? links.map((link) => `${link.id}: ${link.sourceLabel}; ${link.reason}; candidates=${link.candidates.map((candidate) => candidate.label).join(", ") || "none"}`).join("\n")
         : "No pending HTTP links.");
     }
     return;
@@ -181,6 +216,25 @@ function requireDecidedBy(value: string | boolean | undefined): "human" | "llm" 
   if (value === undefined) return "human";
   if (value === "human" || value === "llm") return value;
   throw new Error('The "--decided-by" flag must be either "human" or "llm".');
+}
+
+function optionalStringFlag(flags: Record<string, string | boolean>, name: string): string | undefined {
+  const value = flags[name];
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function optionalDirectionFlag(value: string | boolean | undefined): "in" | "out" | "both" | undefined {
+  if (value === undefined) return undefined;
+  if (value === "in" || value === "out" || value === "both") return value;
+  throw new Error('The "--direction" flag must be "in", "out", or "both".');
+}
+
+function optionalDepthFlag(value: string | boolean | undefined): number {
+  if (value === undefined) return Number.MAX_SAFE_INTEGER;
+  if (typeof value !== "string" || !/^\d+$/.test(value)) {
+    throw new Error('The "--depth" flag must be a non-negative integer.');
+  }
+  return Number(value);
 }
 
 async function loadNormalizedCatalog(root: string, configFlag: string | boolean | undefined): Promise<NormalizedCatalog> {
@@ -236,6 +290,9 @@ Commands:
   graph index             Incrementally index HTTP facts under declared services
   graph enrich            Match HTTP calls to endpoints and rebuild the graph
   graph deps [--json]     Print accepted HTTP dependencies
+  graph status [--json]   Print graph indexing and enrichment freshness
+  graph impact <service>  Print transitive dependent services
+  graph endpoints         Print indexed HTTP endpoints
   graph links ...         List, approve, or reject uncertain HTTP links
   mcp                     Start the read-only MCP context server over stdio
 
@@ -250,7 +307,10 @@ function graphHelp(): string {
 Commands:
   index
   enrich
-  deps [--json]
+  deps [--service id] [--direction in|out|both] [--json]
+  status [--json]
+  impact <service-id> [--depth N] [--json]
+  endpoints [--service id] [--json]
   links list [--json]
   links approve <pending-id> --target <endpoint-id> [--decided-by human|llm]
   links reject <pending-id> [--decided-by human|llm]

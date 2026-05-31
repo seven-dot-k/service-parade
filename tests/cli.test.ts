@@ -96,8 +96,14 @@ test("CLI indexes, enriches, and prints discovered HTTP dependencies", async () 
   await exec("node", [cli, "graph", "index"], { cwd: root });
   await exec("node", [cli, "graph", "enrich"], { cwd: root });
   const { stdout } = await exec("node", [cli, "graph", "deps", "--json"], { cwd: root });
+  const { stdout: status } = await exec("node", [cli, "graph", "status", "--json"], { cwd: root });
+  const { stdout: impact } = await exec("node", [cli, "graph", "impact", "orders-api", "--json"], { cwd: root });
+  const { stdout: endpoints } = await exec("node", [cli, "graph", "endpoints", "--service", "orders-api", "--json"], { cwd: root });
 
   assert.match(stdout, /"sourceServiceId": "web-api"/);
   assert.match(stdout, /"targetServiceId": "orders-api"/);
   assert.equal(stdout.includes('"endpointPath": "/health"'), true);
+  assert.match(status, /"fresh": true/);
+  assert.match(impact, /"serviceId": "web-api"/);
+  assert.equal(endpoints.includes('"path": "/health"'), true);
 });

@@ -38,7 +38,8 @@ test("stdio MCP server exposes catalog, graph resources, and inline planning", a
   assert.deepEqual(resources.resources.map((resource) => resource.uri).sort(), [
     "multirepo://catalog",
     "multirepo://graph/dependencies",
-    "multirepo://graph/pending-links"
+    "multirepo://graph/pending-links",
+    "multirepo://graph/status"
   ]);
 
   const catalog = await client.readResource({ uri: "multirepo://catalog" });
@@ -54,7 +55,12 @@ test("stdio MCP server exposes catalog, graph resources, and inline planning", a
   assert.deepEqual(JSON.parse(textOf(pendingLinks.contents[0])), []);
 
   const tools = await client.listTools();
-  assert.deepEqual(tools.tools.map((tool) => tool.name), ["multirepo_plan_change_set"]);
+  assert.deepEqual(tools.tools.map((tool) => tool.name).sort(), [
+    "multirepo_graph_dependencies",
+    "multirepo_graph_endpoints",
+    "multirepo_graph_impact",
+    "multirepo_plan_change_set"
+  ]);
   const result = await client.callTool({
     name: "multirepo_plan_change_set",
     arguments: { spec: "Add billing-api invoice adjustments." }
@@ -66,6 +72,15 @@ test("stdio MCP server exposes catalog, graph resources, and inline planning", a
   const plan = JSON.parse(result.content[0].text);
   assert.deepEqual(plan.affectedServices.map((service: { id: string }) => service.id), ["billing-api"]);
   assert.equal(plan.specPath.startsWith(os.tmpdir()), true);
+
+  const impact = await client.callTool({
+    name: "multirepo_graph_impact",
+    arguments: { serviceId: "billing-api", maxDepth: 1 }
+  });
+  if (!Array.isArray(impact.content) || impact.content[0]?.type !== "text") {
+    throw new Error("Expected graph impact text.");
+  }
+  assert.deepEqual(JSON.parse(impact.content[0].text).impactedServices, []);
 });
 
 function textOf(content: unknown): string {

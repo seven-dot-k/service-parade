@@ -62,6 +62,9 @@ The `graph` commands incrementally index declared service roots, detect inbound 
 node src/cli.ts graph index
 node src/cli.ts graph enrich
 node src/cli.ts graph deps --json
+node src/cli.ts graph status --json
+node src/cli.ts graph impact orders-api --depth 2 --json
+node src/cli.ts graph endpoints --service orders-api --json
 node src/cli.ts graph links list --json
 node src/cli.ts graph links approve <pending-id> --target <endpoint-id>
 node src/cli.ts graph links reject <pending-id>

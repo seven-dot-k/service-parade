@@ -7,10 +7,11 @@ import { z } from "zod";
 import { normalizeCatalog } from "../catalog.ts";
 import { loadConfig } from "../config.ts";
 import { stableJson } from "../fs.ts";
-import { listPendingLinks, loadDependencyArtifact } from "../graph/enrich.ts";
+import { loadDependencyArtifact } from "../graph/enrich.ts";
 import { resolveGraphDb } from "../graph/paths.ts";
 import { planChangeSet } from "../planner.ts";
 import type { NormalizedCatalog } from "../types.ts";
+import { getGraphStatus, listDependencies, listEndpoints, listPendingLinkDetails, queryTransitiveImpact } from "../graph/query.ts";
 
 export type MultiRepoMcpOptions = {
   root: string;
@@ -35,6 +36,16 @@ export function createMultiRepoMcpServer(options: MultiRepoMcpOptions): McpServe
   );
 
   server.registerResource(
+    "graph-status",
+    "multirepo://graph/status",
+    {
+      description: "Graph indexing and enrichment freshness status.",
+      mimeType: "application/json"
+    },
+    async (uri) => jsonResource(uri, await getGraphStatus(root, await loadCatalog(root, options.config)))
+  );
+
+  server.registerResource(
     "dependency-graph",
     "multirepo://graph/dependencies",
     {
@@ -54,7 +65,7 @@ export function createMultiRepoMcpServer(options: MultiRepoMcpOptions): McpServe
       description: "Discovered HTTP links awaiting review. Empty until graph enrichment has run.",
       mimeType: "application/json"
     },
-    async (uri) => jsonResource(uri, await loadPendingLinks(root))
+    async (uri) => jsonResource(uri, await loadPendingLinkDetails(root, options.config))
   );
 
   server.registerTool(
@@ -80,6 +91,44 @@ export function createMultiRepoMcpServer(options: MultiRepoMcpOptions): McpServe
     }
   );
 
+  server.registerTool(
+    "multirepo_graph_dependencies",
+    {
+      description: "List accepted HTTP dependencies, optionally filtered by service and direction.",
+      inputSchema: {
+        serviceId: z.string().min(1).optional(),
+        direction: z.enum(["in", "out", "both"]).optional()
+      },
+      annotations: { readOnlyHint: true }
+    },
+    async ({ serviceId, direction }) => textResult(await listDependencies(root, { serviceId, direction }))
+  );
+
+  server.registerTool(
+    "multirepo_graph_impact",
+    {
+      description: "Find services transitively impacted by a change to the target service.",
+      inputSchema: {
+        serviceId: z.string().min(1),
+        maxDepth: z.number().int().nonnegative().optional()
+      },
+      annotations: { readOnlyHint: true }
+    },
+    async ({ serviceId, maxDepth }) => textResult(await queryTransitiveImpact(root, serviceId, maxDepth))
+  );
+
+  server.registerTool(
+    "multirepo_graph_endpoints",
+    {
+      description: "List indexed HTTP endpoints, optionally filtered by service.",
+      inputSchema: {
+        serviceId: z.string().min(1).optional()
+      },
+      annotations: { readOnlyHint: true }
+    },
+    async ({ serviceId }) => textResult(listEndpoints(root, { serviceId }))
+  );
+
   return server;
 }
 
@@ -88,13 +137,13 @@ async function loadCatalog(root: string, config?: string): Promise<NormalizedCat
   return normalizeCatalog(loaded.config, root);
 }
 
-async function loadPendingLinks(root: string): Promise<ReturnType<typeof listPendingLinks>> {
+async function loadPendingLinkDetails(root: string, config?: string) {
   try {
     await access(resolveGraphDb(root));
   } catch {
     return [];
   }
-  return listPendingLinks(root);
+  return listPendingLinkDetails(root, await loadCatalog(root, config));
 }
 
 async function planInlineSpec(catalog: NormalizedCatalog, spec: string) {
@@ -113,6 +162,15 @@ function jsonResource(uri: URL, value: unknown) {
     contents: [{
       uri: uri.href,
       mimeType: "application/json",
+      text: stableJson(value)
+    }]
+  };
+}
+
+function textResult(value: unknown) {
+  return {
+    content: [{
+      type: "text" as const,
       text: stableJson(value)
     }]
   };
