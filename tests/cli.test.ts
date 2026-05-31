@@ -39,6 +39,7 @@ test("CLI runs init, catalog, plan, assemble, instructions, and verify", async (
   await exec("node", [cli, "catalog"], { cwd: root });
   await exec("node", [cli, "plan", "--spec", "spec.md"], { cwd: root });
   await exec("node", [cli, "assemble"], { cwd: root });
+  await exec("node", [cli, "pr", "plan"], { cwd: root });
   await exec("node", [cli, "instructions"], { cwd: root });
   await exec("node", [cli, "verify"], { cwd: root });
 
@@ -46,6 +47,8 @@ test("CLI runs init, catalog, plan, assemble, instructions, and verify", async (
   assert.match(await readFile(path.join(root, ".multirepo", "workspace.md"), "utf8"), /orders-api/);
   assert.match(await readFile(path.join(root, ".multirepo", "workspace", "workspace-manifest.json"), "utf8"), /orders-api/);
   assert.match(await readFile(path.join(root, ".multirepo", "workspace", "repos", "repo-a", "AGENTS.md"), "utf8"), /Generated repository handoff/);
+  assert.match(await readFile(path.join(root, ".multirepo", "pr-plan.json"), "utf8"), /"dryRun": true/);
+  assert.match(await readFile(path.join(root, ".multirepo", "pr-plan.md"), "utf8"), /Pull Request Orchestration Plan/);
   assert.match(await readFile(path.join(root, ".multirepo", "AGENTS.md"), "utf8"), /AGENTS\.md/);
   assert.match(await readFile(path.join(root, ".multirepo", "verification-report.json"), "utf8"), /"passed": true/);
 });

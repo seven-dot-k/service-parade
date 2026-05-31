@@ -18,6 +18,7 @@ node src/cli.ts graph index
 node src/cli.ts graph enrich
 node src/cli.ts graph deps
 node src/cli.ts mcp
+node src/cli.ts pr plan
 ```
 
 Generated artifacts are written to `.multirepo/`.
@@ -85,3 +86,13 @@ node src/cli.ts mcp
 ```
 
 It exposes catalog, accepted dependency, and pending-link resources plus an inline spec-to-change-set planning tool. Indexing, approvals, and verification remain explicit CLI operations because they mutate workspace state or execute commands.
+
+## Pull Request Dry Run
+
+Generate a vendor-neutral local orchestration report after planning and workspace assembly:
+
+```bash
+node src/cli.ts pr plan
+```
+
+The command writes `.multirepo/pr-plan.json` and `.multirepo/pr-plan.md` with suggested branches, PR titles, repository implementation order, cross-repo prerequisites, dependency evidence, verification commands, and readiness risks. It does not create branches, commits, or hosted pull requests.

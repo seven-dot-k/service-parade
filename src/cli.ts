@@ -17,6 +17,8 @@ import { closeProjection } from "./graph/projection.ts";
 import { getGraphStatus, listDependencies, listEndpoints, listPendingLinkDetails, queryTransitiveImpact } from "./graph/query.ts";
 import { assembleWorkspaceBundle } from "./workspace/index.ts";
 import { startMultiRepoStdioServer } from "./mcp/stdio.ts";
+import { createPrOrchestrationPlan, renderPrOrchestrationPlan } from "./pr/orchestrator.ts";
+import type { WorkspaceManifest } from "./workspace/types.ts";
 
 type Args = {
   command: string;
@@ -89,10 +91,29 @@ async function main(): Promise<void> {
       });
       return;
     }
+    case "pr": {
+      await runPrCommand(root, args);
+      return;
+    }
     case "help":
     default:
       print(help());
   }
+}
+
+async function runPrCommand(root: string, args: Args): Promise<void> {
+  const action = args.positionals[0] ?? "help";
+  if (action !== "plan") {
+    print(prHelp());
+    return;
+  }
+  const catalog = await loadCatalogArtifact(root, args.flags.config);
+  const plan = await loadPlan(root, args.flags.plan);
+  const workspace = await loadWorkspaceManifest(root);
+  const orchestration = createPrOrchestrationPlan(catalog, plan, workspace);
+  await writeJson(root, "pr-plan.json", orchestration);
+  await writeText(resolveOutput(root, "pr-plan.md"), renderPrOrchestrationPlan(orchestration));
+  print(`Wrote ${resolveOutput(root, "pr-plan.json")} and ${resolveOutput(root, "pr-plan.md")}`);
 }
 
 function parseArgs(argv: string[]): Args {
@@ -255,6 +276,14 @@ async function loadPlan(root: string, planFlag: string | boolean | undefined): P
   return JSON.parse(await readText(planPath)) as ChangeSet;
 }
 
+async function loadWorkspaceManifest(root: string): Promise<WorkspaceManifest | undefined> {
+  try {
+    return JSON.parse(await readText(resolveOutput(root, path.join("workspace", "workspace-manifest.json")))) as WorkspaceManifest;
+  } catch {
+    return undefined;
+  }
+}
+
 async function writeJson(root: string, file: string, value: unknown): Promise<void> {
   await mkdir(resolveOutput(root, "."), { recursive: true });
   await writeText(resolveOutput(root, file), stableJson(value));
@@ -295,9 +324,18 @@ Commands:
   graph endpoints         Print indexed HTTP endpoints
   graph links ...         List, approve, or reject uncertain HTTP links
   mcp                     Start the read-only MCP context server over stdio
+  pr plan [--plan file]   Write a local-first multi-PR dry-run plan
 
 Options:
   --config <file>         Use a specific catalog file
+`;
+}
+
+function prHelp(): string {
+  return `Usage: multirepo pr <command>
+
+Commands:
+  plan [--plan file]      Write .multirepo/pr-plan.{json,md}
 `;
 }
 
