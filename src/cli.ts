@@ -14,6 +14,8 @@ import { verifyPlan } from "./verify.ts";
 import { enrichGraph, listPendingLinks, loadDependencyArtifact, saveLinkDecision } from "./graph/enrich.ts";
 import { indexGraph } from "./graph/indexer.ts";
 import { closeProjection } from "./graph/projection.ts";
+import { assembleWorkspaceBundle } from "./workspace/index.ts";
+import { startMultiRepoStdioServer } from "./mcp/stdio.ts";
 
 type Args = {
   command: string;
@@ -50,8 +52,9 @@ async function main(): Promise<void> {
     case "assemble": {
       const catalog = await loadCatalogArtifact(root, args.flags.config);
       const plan = await loadPlan(root, args.flags.plan);
+      const bundle = await assembleWorkspaceBundle(catalog, plan, resolveOutput(root, "workspace"));
       await writeText(resolveOutput(root, "workspace.md"), renderWorkspace(catalog, plan));
-      print(`Wrote ${resolveOutput(root, "workspace.md")}`);
+      print(`Wrote ${resolveOutput(root, "workspace.md")} and ${bundle.files.length} structured workspace handoff file(s) under ${bundle.outputDirectory}`);
       return;
     }
     case "instructions": {
@@ -76,6 +79,13 @@ async function main(): Promise<void> {
     }
     case "graph": {
       await runGraphCommand(root, args);
+      return;
+    }
+    case "mcp": {
+      await startMultiRepoStdioServer({
+        root,
+        config: typeof args.flags.config === "string" ? args.flags.config : undefined
+      });
       return;
     }
     case "help":
@@ -227,6 +237,7 @@ Commands:
   graph enrich            Match HTTP calls to endpoints and rebuild the graph
   graph deps [--json]     Print accepted HTTP dependencies
   graph links ...         List, approve, or reject uncertain HTTP links
+  mcp                     Start the read-only MCP context server over stdio
 
 Options:
   --config <file>         Use a specific catalog file

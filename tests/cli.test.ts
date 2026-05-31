@@ -44,6 +44,8 @@ test("CLI runs init, catalog, plan, assemble, instructions, and verify", async (
 
   assert.match(await readFile(path.join(root, ".multirepo", "catalog.json"), "utf8"), /orders-api/);
   assert.match(await readFile(path.join(root, ".multirepo", "workspace.md"), "utf8"), /orders-api/);
+  assert.match(await readFile(path.join(root, ".multirepo", "workspace", "workspace-manifest.json"), "utf8"), /orders-api/);
+  assert.match(await readFile(path.join(root, ".multirepo", "workspace", "repos", "repo-a", "AGENTS.md"), "utf8"), /Generated repository handoff/);
   assert.match(await readFile(path.join(root, ".multirepo", "AGENTS.md"), "utf8"), /AGENTS\.md/);
   assert.match(await readFile(path.join(root, ".multirepo", "verification-report.json"), "utf8"), /"passed": true/);
 });

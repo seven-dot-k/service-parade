@@ -17,6 +17,7 @@ node src/cli.ts verify
 node src/cli.ts graph index
 node src/cli.ts graph enrich
 node src/cli.ts graph deps
+node src/cli.ts mcp
 ```
 
 Generated artifacts are written to `.multirepo/`.
@@ -67,3 +68,17 @@ node src/cli.ts graph links reject <pending-id>
 ```
 
 Durable SQLite state, deterministic dependency artifacts, and the rebuildable embedded SurrealDB projection live under `.multirepo/graph/`.
+
+## Workspace Handoff
+
+`assemble` writes the human-readable `.multirepo/workspace.md` summary and a structured `.multirepo/workspace/workspace-manifest.json` bundle. The bundle contains affected repositories, services, dependency evidence, canonical verification commands, risks, and repository-scoped `AGENTS.md` and `CLAUDE.md` handoffs under `.multirepo/workspace/repos/`.
+
+## MCP Context Server
+
+Start the local read-only MCP server over stdio:
+
+```bash
+node src/cli.ts mcp
+```
+
+It exposes catalog, accepted dependency, and pending-link resources plus an inline spec-to-change-set planning tool. Indexing, approvals, and verification remain explicit CLI operations because they mutate workspace state or execute commands.
