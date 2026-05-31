@@ -16,6 +16,7 @@ export type GraphEnrichSummary = {
 
 export async function enrichGraph(root: string, catalog: NormalizedCatalog): Promise<GraphEnrichSummary> {
   const indexManifest = await loadIndexManifest(root);
+  const inputHash = enrichmentInputHash(indexManifest.hash, catalog);
   const storage = new GraphStorage(resolveGraphDb(root));
   try {
     const facts = storage.allFacts();
@@ -65,7 +66,7 @@ export async function enrichGraph(root: string, catalog: NormalizedCatalog): Pro
     const previous = await loadDependencyArtifact(root);
     const artifact: GraphDependencyArtifact = {
       generatedAt: new Date().toISOString(),
-      indexManifestHash: indexManifest.hash,
+      indexManifestHash: inputHash,
       pendingCount: pending.length,
       dependencies
     };
@@ -75,13 +76,13 @@ export async function enrichGraph(root: string, catalog: NormalizedCatalog): Pro
     await writeText(resolveGraph(root, "dependencies.json"), stableJson(artifact));
     await writeText(resolveGraph(root, "manifest.json"), stableJson({
       generatedAt: artifact.generatedAt,
-      indexManifestHash: indexManifest.hash,
+      indexManifestHash: inputHash,
       dependencies: dependencies.length,
       pending: pending.length
     }));
     await rebuildProjection(root, catalog, facts, dependencies);
-    storage.setMeta("enriched_index_manifest_hash", indexManifest.hash);
-    return { dependencies: dependencies.length, pending: pending.length, indexManifestHash: indexManifest.hash };
+    storage.setMeta("enriched_index_manifest_hash", inputHash);
+    return { dependencies: dependencies.length, pending: pending.length, indexManifestHash: inputHash };
   } finally {
     storage.close();
   }
@@ -113,6 +114,19 @@ export async function loadIndexManifest(root: string): Promise<GraphIndexManifes
   } catch {
     throw new Error('No graph index found. Run "multirepo graph index" before enriching dependencies.');
   }
+}
+
+export function enrichmentInputHash(indexManifestHash: string, catalog: NormalizedCatalog): string {
+  return sha256(stableJson({
+    indexManifestHash,
+    services: catalog.services.map((service) => ({
+      id: service.id,
+      repoId: service.repoId,
+      root: service.root,
+      aliases: [...service.aliases].sort(),
+      baseUrls: [...service.baseUrls].sort()
+    })).sort((a, b) => a.id.localeCompare(b.id))
+  }));
 }
 
 export function listPendingLinks(root: string): PendingLink[] {
@@ -175,10 +189,11 @@ function matchCall(
   let candidates = compatible.filter((endpoint) => endpoint.serviceId !== call.serviceId);
   if (call.host) {
     const servicesForHost = services.filter((service) => serviceHosts(service).has(call.host ?? ""));
-    if (servicesForHost.length > 0) {
-      const ids = new Set(servicesForHost.map((service) => service.id));
-      candidates = candidates.filter((endpoint) => ids.has(endpoint.serviceId));
+    if (servicesForHost.length === 0) {
+      return { candidates: [], score: 0, reason: `The absolute host "${call.host}" does not match a declared internal service alias.` };
     }
+    const ids = new Set(servicesForHost.map((service) => service.id));
+    candidates = candidates.filter((endpoint) => ids.has(endpoint.serviceId));
   }
   candidates.sort((a, b) => a.id.localeCompare(b.id));
   if (candidates.length === 0) {
@@ -211,7 +226,7 @@ function serviceHosts(service: NormalizedService): Set<string> {
 }
 
 function linkSignature(call: HttpCallFact): string {
-  return sha256([call.file, call.enclosingSymbol, call.httpMethod ?? "", call.path ?? ""].join("\u0000"));
+  return sha256([call.file, call.enclosingSymbol, call.httpMethod ?? "", call.host ?? "", call.path ?? ""].join("\u0000"));
 }
 
 function toDependency(

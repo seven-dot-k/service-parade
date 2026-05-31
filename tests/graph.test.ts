@@ -19,6 +19,7 @@ test("indexes, enriches, reviews, and plans from discovered HTTP dependencies", 
     "axios.get(`/orders/${id}`);",
     `fetch("/status");`,
     `fetch(dynamicUrl);`,
+    `fetch("https://external.example/health");`,
     `fetch("/local");`
   ].join("\n"));
   await write(root, "storefront/app/api/cart/route.ts", `export async function GET() { return Response.json({ ok: true }); }\n`);
@@ -74,9 +75,10 @@ test("indexes, enriches, reviews, and plans from discovered HTTP dependencies", 
   assert.equal(artifact.dependencies.some((edge) => edge.sourceServiceId === "storefront-api" && edge.targetServiceId === "inventory-api"), true);
 
   const pending = listPendingLinks(root);
-  assert.equal(pending.length, 2);
+  assert.equal(pending.length, 3);
+  assert.equal(pending.some((link) => link.reason.includes("external.example")), true);
   const ambiguous = pending.find((link) => link.candidateEndpointIds.length === 2);
-  const unresolved = pending.find((link) => link.candidateEndpointIds.length === 0);
+  const unresolved = pending.find((link) => link.reason.includes("fully dynamic"));
   assert.ok(ambiguous);
   assert.ok(unresolved);
 
@@ -84,7 +86,7 @@ test("indexes, enriches, reviews, and plans from discovered HTTP dependencies", 
   saveLinkDecision(root, unresolved.id, "rejected", undefined, "llm");
   const secondEnrich = await enrichGraph(root, catalog);
   assert.equal(secondEnrich.dependencies, 6);
-  assert.equal(secondEnrich.pending, 0);
+  assert.equal(secondEnrich.pending, 1);
 
   const spec = path.join(root, "spec.md");
   await writeFile(spec, "Update fulfillment-api behavior.", "utf8");

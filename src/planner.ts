@@ -1,14 +1,14 @@
 import path from "node:path";
 import type { CatalogCommand, ChangeSet, HttpDependency, NormalizedCatalog, NormalizedRepo, NormalizedService } from "./types.ts";
 import { readText } from "./fs.ts";
-import { loadDependencyArtifact, loadIndexManifest } from "./graph/enrich.ts";
+import { enrichmentInputHash, loadDependencyArtifact, loadIndexManifest } from "./graph/enrich.ts";
 
 export async function planChangeSet(catalog: NormalizedCatalog, specPath: string): Promise<ChangeSet> {
   const spec = await readText(specPath);
   const terms = tokenize(spec);
   const serviceReasons = new Map<string, string[]>();
   const repoReasons = new Map<string, string[]>();
-  const graph = await loadGraphState(catalog.root);
+  const graph = await loadGraphState(catalog);
 
   for (const service of catalog.services) {
     const matches = matchEntity(terms, [
@@ -16,6 +16,8 @@ export async function planChangeSet(catalog: NormalizedCatalog, specPath: string
       service.repoId,
       service.root,
       service.language ?? "",
+      ...service.aliases,
+      ...service.baseUrls,
       ...service.tags
     ]);
     if (matches.length > 0) {
@@ -32,7 +34,8 @@ export async function planChangeSet(catalog: NormalizedCatalog, specPath: string
   }
 
   const directServices = new Set(serviceReasons.keys());
-  for (const dependency of graph.dependencies) {
+  const usableDependencies = graph.stale ? [] : graph.dependencies;
+  for (const dependency of usableDependencies) {
     if (directServices.has(dependency.sourceServiceId)) {
       addReason(
         serviceReasons,
@@ -78,7 +81,7 @@ export async function planChangeSet(catalog: NormalizedCatalog, specPath: string
     }));
 
   const affectedIds = new Set([...affectedServices.map((item) => item.id), ...affectedRepos.map((item) => item.id)]);
-  const dependencyEdges = graph.dependencies.filter(
+  const dependencyEdges = usableDependencies.filter(
     (edge) => affectedIds.has(edge.sourceServiceId) || affectedIds.has(edge.targetServiceId)
   );
 
@@ -89,8 +92,8 @@ export async function planChangeSet(catalog: NormalizedCatalog, specPath: string
     affectedServices,
     affectedRepos,
     dependencyEdges,
-    recommendedOrder: orderServices(affectedServices.map((service) => service.id), graph.dependencies),
-    risks: buildRisks(affectedServices.length, graph)
+    recommendedOrder: orderServices(affectedServices.map((service) => service.id), usableDependencies),
+    risks: buildRisks(affectedServices.length, graph, affectedServices.map((service) => service.id))
   };
 }
 
@@ -141,7 +144,7 @@ function orderServices(ids: string[], dependencies: HttpDependency[]): string[] 
   const ordered: string[] = [];
   while (remaining.size > 0) {
     const next = [...remaining].find((id) =>
-      dependencies.filter((edge) => edge.targetServiceId === id).every((edge) => !remaining.has(edge.sourceServiceId))
+      dependencies.filter((edge) => edge.sourceServiceId === id).every((edge) => !remaining.has(edge.targetServiceId))
     ) ?? [...remaining][0];
     ordered.push(next);
     remaining.delete(next);
@@ -151,7 +154,8 @@ function orderServices(ids: string[], dependencies: HttpDependency[]): string[] 
 
 function buildRisks(
   affectedServiceCount: number,
-  graph: { dependencies: HttpDependency[]; pendingCount: number; missing: boolean; stale: boolean }
+  graph: { dependencies: HttpDependency[]; pendingCount: number; missing: boolean; stale: boolean },
+  affectedServiceIds: string[]
 ): string[] {
   const risks: string[] = [];
   if (affectedServiceCount === 0) {
@@ -168,22 +172,43 @@ function buildRisks(
   if (graph.pendingCount > 0) {
     risks.push(`${graph.pendingCount} discovered HTTP link(s) are pending review and were excluded from automatic scope expansion.`);
   }
+  if (hasDependencyCycle(affectedServiceIds, graph.stale ? [] : graph.dependencies)) {
+    risks.push("The affected HTTP dependency graph contains a cycle; verify implementation and rollout ordering manually.");
+  }
   return risks;
 }
 
-async function loadGraphState(root: string): Promise<{
+function hasDependencyCycle(ids: string[], dependencies: HttpDependency[]): boolean {
+  const affected = new Set(ids);
+  const visiting = new Set<string>();
+  const visited = new Set<string>();
+  const visit = (id: string): boolean => {
+    if (visiting.has(id)) return true;
+    if (visited.has(id)) return false;
+    visiting.add(id);
+    for (const edge of dependencies.filter((item) => item.sourceServiceId === id && affected.has(item.targetServiceId))) {
+      if (visit(edge.targetServiceId)) return true;
+    }
+    visiting.delete(id);
+    visited.add(id);
+    return false;
+  };
+  return ids.some(visit);
+}
+
+async function loadGraphState(catalog: NormalizedCatalog): Promise<{
   dependencies: HttpDependency[];
   pendingCount: number;
   missing: boolean;
   stale: boolean;
 }> {
-  const artifact = await loadDependencyArtifact(root);
+  const artifact = await loadDependencyArtifact(catalog.root);
   if (!artifact) {
     return { dependencies: [], pendingCount: 0, missing: true, stale: false };
   }
   let stale = false;
   try {
-    stale = (await loadIndexManifest(root)).hash !== artifact.indexManifestHash;
+    stale = enrichmentInputHash((await loadIndexManifest(catalog.root)).hash, catalog) !== artifact.indexManifestHash;
   } catch {
     stale = true;
   }

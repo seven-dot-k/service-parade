@@ -9,22 +9,32 @@ import type {
   RepoConfig,
   ServiceConfig
 } from "./types.ts";
+import {
+  normalizeCommands,
+  normalizeRepoCommands,
+  normalizeServiceCommands,
+  validateCommand,
+  validateCommandCwds,
+  validateGlobalCommandOwners
+} from "./commands.ts";
 import { scanRepo } from "./scanner.ts";
 
 export async function normalizeCatalog(config: CatalogConfig, root: string): Promise<NormalizedCatalog> {
   validateConfig(config);
-  const repos = await Promise.all((config.repos ?? []).map((repo) => normalizeRepo(repo, root, config.commands ?? [])));
+  const globalCommands = normalizeCommands(config.commands ?? []);
+  const repos = await Promise.all((config.repos ?? []).map((repo) => normalizeRepo(repo, root, globalCommands)));
   const repoById = new Map(repos.map((repo) => [repo.id, repo]));
-  const services = (config.services ?? []).map((service) => normalizeService(service, repoById, config.commands ?? []));
+  const services = (config.services ?? []).map((service) => normalizeService(service, repoById, globalCommands));
 
   validateReferences(repos, services);
+  validateGlobalCommandOwners(globalCommands, repos, services);
 
   return {
     generatedAt: new Date().toISOString(),
     root,
     repos,
     services,
-    commands: normalizeCommands(config.commands ?? [])
+    commands: globalCommands
   };
 }
 
@@ -59,10 +69,11 @@ async function normalizeRepo(repo: RepoConfig, root: string, globalCommands: Cat
   const absolutePath = path.resolve(root, repo.path);
   const inferred = await scanRepo(absolutePath);
   const commands = [
-    ...normalizeCommands(repo.commands ?? []),
-    ...normalizeCommands(globalCommands.filter((command) => command.scope === "repo" && command.repoId === repo.id)),
+    ...normalizeRepoCommands(repo.commands ?? [], repo.id),
+    ...globalCommands.filter((command) => command.scope === "repo" && command.repoId === repo.id),
     ...inferRepoCommands(repo.id, inferred)
   ];
+  validateCommandCwds(commands, absolutePath, repo.id);
   return {
     ...repo,
     defaultBranch: repo.defaultBranch ?? "main",
@@ -84,9 +95,12 @@ function normalizeService(
   const root = service.root ?? ".";
   const absolutePath = path.resolve(repo.absolutePath, root);
   const commands = [
-    ...normalizeCommands(service.commands ?? []),
-    ...normalizeCommands(globalCommands.filter((command) => command.scope === "service" && command.serviceId === service.id))
+    ...normalizeServiceCommands(service.commands ?? [], service.id),
+    ...globalCommands
+      .filter((command) => command.scope === "service" && command.serviceId === service.id)
+      .map((command) => ({ ...command, repoId: undefined }))
   ];
+  validateCommandCwds(commands, absolutePath, service.id);
   return {
     ...service,
     root,
@@ -114,25 +128,6 @@ function inferRepoCommands(repoId: string, inferred: Inference): CatalogCommand[
     }
   }
   return commands;
-}
-
-function normalizeCommands(commands: CatalogCommand[]): CatalogCommand[] {
-  return commands.map((command) => {
-    validateCommand(command);
-    return {
-      ...command,
-      name: command.name.trim(),
-      run: command.run.trim()
-    };
-  });
-}
-
-function validateCommand(command: CatalogCommand): void {
-  requireString(command.name, "command.name");
-  requireString(command.run, `command(${command.name}).run`);
-  if (command.scope && command.scope !== "repo" && command.scope !== "service") {
-    throw new Error(`Command "${command.name}" has unsupported scope "${command.scope}".`);
-  }
 }
 
 function validateReferences(
