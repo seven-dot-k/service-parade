@@ -15,6 +15,7 @@ import { enrichGraph, saveLinkDecision } from "./graph/enrich.ts";
 import { indexGraph } from "./graph/indexer.ts";
 import { closeProjection } from "./graph/projection.ts";
 import { getGraphStatus, listDependencies, listEndpoints, listPendingLinkDetails, queryTransitiveImpact } from "./graph/query.ts";
+import { startGraphPreview } from "./graph/preview.ts";
 import { assembleWorkspaceBundle } from "./workspace/index.ts";
 import { startMultiRepoStdioServer } from "./mcp/stdio.ts";
 import { createPrOrchestrationPlan, renderPrOrchestrationPlan } from "./pr/orchestrator.ts";
@@ -199,6 +200,14 @@ async function runGraphCommand(root: string, args: Args): Promise<void> {
     }
     return;
   }
+  if (action === "preview") {
+    const catalog = await loadNormalizedCatalog(root, args.flags.config);
+    const host = optionalStringFlag(args.flags, "host") ?? "127.0.0.1";
+    const port = optionalPortFlag(args.flags.port);
+    const preview = await startGraphPreview(root, catalog, { host, port });
+    print(`Serving read-only graph preview at ${preview.url}`);
+    return;
+  }
   if (action === "links") {
     await runGraphLinksCommand(root, args);
     return;
@@ -256,6 +265,18 @@ function optionalDepthFlag(value: string | boolean | undefined): number {
     throw new Error('The "--depth" flag must be a non-negative integer.');
   }
   return Number(value);
+}
+
+function optionalPortFlag(value: string | boolean | undefined): number {
+  if (value === undefined) return 4173;
+  if (typeof value !== "string" || !/^\d+$/.test(value)) {
+    throw new Error('The "--port" flag must be an integer between 0 and 65535.');
+  }
+  const port = Number(value);
+  if (port < 0 || port > 65535) {
+    throw new Error('The "--port" flag must be an integer between 0 and 65535.');
+  }
+  return port;
 }
 
 async function loadNormalizedCatalog(root: string, configFlag: string | boolean | undefined): Promise<NormalizedCatalog> {
@@ -322,6 +343,7 @@ Commands:
   graph status [--json]   Print graph indexing and enrichment freshness
   graph impact <service>  Print transitive dependent services
   graph endpoints         Print indexed HTTP endpoints
+  graph preview           Serve a read-only local HTTP graph visualization
   graph links ...         List, approve, or reject uncertain HTTP links
   mcp                     Start the read-only MCP context server over stdio
   pr plan [--plan file]   Write a local-first multi-PR dry-run plan

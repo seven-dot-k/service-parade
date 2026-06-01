@@ -17,6 +17,7 @@ node src/cli.ts verify
 node src/cli.ts graph index
 node src/cli.ts graph enrich
 node src/cli.ts graph deps
+node src/cli.ts graph preview
 node src/cli.ts mcp
 node src/cli.ts pr plan
 ```
@@ -69,9 +70,11 @@ node src/cli.ts graph endpoints --service orders-api --json
 node src/cli.ts graph links list --json
 node src/cli.ts graph links approve <pending-id> --target <endpoint-id>
 node src/cli.ts graph links reject <pending-id>
+node src/cli.ts graph preview [--host 127.0.0.1] [--port 4173]
 ```
 
 Durable SQLite state, deterministic dependency artifacts, and the rebuildable embedded SurrealDB projection live under `.multirepo/graph/`.
+The `graph preview` command serves a dependency-free, read-only HTML visualization from those artifacts. It defaults to `http://127.0.0.1:4173`.
 
 ## Workspace Handoff
 
