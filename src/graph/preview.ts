@@ -111,7 +111,7 @@ export function renderGraphPreviewHtml(): string {
     #summary { display: flex; flex-wrap: wrap; gap: 10px; padding: 14px 16px; border-bottom: 1px solid #263758; }
     .metric { color: #bfdbfe; font-size: 13px; }
     svg { display: block; width: 100%; min-height: 560px; }
-    .edge { stroke: #60a5fa; stroke-width: 2; opacity: .72; marker-end: url(#arrow); }
+    .edge { stroke: #60a5fa; stroke-width: 2.5; opacity: .86; }
     .edge-label { fill: #bfdbfe; font-size: 12px; paint-order: stroke; stroke: #0f172a; stroke-width: 5px; stroke-linejoin: round; }
     .node { fill: #172554; stroke: #93c5fd; stroke-width: 2; }
     .node-title { fill: #eff6ff; font-size: 15px; font-weight: 700; text-anchor: middle; }
@@ -162,11 +162,42 @@ export function renderGraphPreviewHtml(): string {
       arrow.setAttribute("d", "M 0 0 L 10 5 L 0 10 z"); arrow.setAttribute("fill", "#60a5fa");
       marker.appendChild(arrow); defs.appendChild(marker);
       const positions = new Map(data.services.map((service, index) => [service.id, point(index, data.services.length)]));
-      data.dependencies.forEach((edge) => {
-        const from = positions.get(edge.sourceServiceId); const to = positions.get(edge.targetServiceId);
+      const pairKey = (left, right) => [left, right].sort().join("\\u0000");
+      const grouped = new Map();
+      data.dependencies.forEach((dependency) => {
+        const key = pairKey(dependency.sourceServiceId, dependency.targetServiceId);
+        const group = grouped.get(key) || { left: dependency.sourceServiceId, right: dependency.targetServiceId, directions: new Map() };
+        const direction = dependency.sourceServiceId + "\\u0000" + dependency.targetServiceId;
+        const routes = group.directions.get(direction) || [];
+        routes.push(dependency.httpMethod + " " + dependency.endpointPath);
+        group.directions.set(direction, routes);
+        grouped.set(key, group);
+      });
+      grouped.forEach((group) => {
+        const from = positions.get(group.left); const to = positions.get(group.right);
         if (!from || !to) return;
-        add("line", { class: "edge", x1: from.x, y1: from.y, x2: to.x, y2: to.y });
-        add("text", { class: "edge-label", x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 - 8, "text-anchor": "middle" }, edge.httpMethod + " " + edge.endpointPath);
+        const reverse = group.right + "\\u0000" + group.left;
+        const reciprocal = group.directions.has(reverse);
+        const dx = to.x - from.x; const dy = to.y - from.y;
+        const length = Math.hypot(dx, dy); const ux = dx / length; const uy = dy / length;
+        const attrs = {
+          class: "edge",
+          x1: from.x + ux * 112, y1: from.y + uy * 48,
+          x2: to.x - ux * 112, y2: to.y - uy * 48,
+          "marker-end": "url(#arrow)"
+        };
+        if (reciprocal) attrs["marker-start"] = "url(#arrow)";
+        const line = add("line", attrs);
+        const count = [...group.directions.values()].reduce((total, routes) => total + routes.length, 0);
+        const arrowText = reciprocal ? " <-> " : " -> ";
+        const details = [...group.directions.entries()]
+          .flatMap(([direction, routes]) => routes.map((route) => direction.replace("\\u0000", " -> ") + ": " + route))
+          .sort()
+          .join("\\n");
+        const title = document.createElementNS(ns, "title");
+        title.textContent = details;
+        line.appendChild(title);
+        add("text", { class: "edge-label", x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 - 8, "text-anchor": "middle" }, group.left + arrowText + group.right + " · " + count + " call" + (count === 1 ? "" : "s"));
       });
       data.services.forEach((service) => {
         const at = positions.get(service.id);

@@ -30,6 +30,9 @@ test("graph preview serves a read-only HTML view and graph JSON", async (t) => {
   const model = await fetch(`${preview.url}/api/graph`).then((response) => response.json());
 
   assert.match(html, /HTTP Dependency Graph/);
+  assert.match(html, /marker-end/);
+  assert.match(html, /marker-start/);
+  assert.match(html, /group\.left \+ arrowText \+ group\.right/);
   assert.deepEqual(model.services.map((service: { id: string }) => service.id), ["orders-api", "web-api"]);
   assert.equal(model.dependencies.length, 1);
   assert.equal(model.dependencies[0].sourceServiceId, "web-api");
