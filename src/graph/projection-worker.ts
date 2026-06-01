@@ -21,7 +21,7 @@ async function main(): Promise<void> {
   const graphPath = resolveSurrealGraph(root);
   await mkdir(path.dirname(graphPath), { recursive: true });
   const db = new Surreal({ engines: { ...createRemoteEngines(), ...createNodeEngines() } });
-  await db.connect(`rocksdb://${graphPath}`, { namespace: "multirepo", database: "graph" });
+  await db.connect(`rocksdb://${graphPath}`, { namespace: "service_parade", database: "graph" });
   try {
     await db.query(`
       REMOVE TABLE IF EXISTS consumes_endpoint;

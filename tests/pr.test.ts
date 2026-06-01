@@ -53,7 +53,7 @@ test("PR orchestration is deterministic apart from generatedAt", () => {
 });
 
 function fixture(): { catalog: NormalizedCatalog; changeSet: ChangeSet; workspace: WorkspaceManifest } {
-  const root = "/tmp/multirepo-pr";
+  const root = "/tmp/service-parade-pr";
   const edge: HttpDependency = {
     id: "dep-1",
     sourceServiceId: "billing-api",
@@ -108,9 +108,9 @@ function fixture(): { catalog: NormalizedCatalog; changeSet: ChangeSet; workspac
     services: [],
     dependencies: [edge],
     verificationCommands: [
-      { targetType: "repo", targetId: "billing", name: "billing-lint", run: "npm run lint", cwd: "/tmp/multirepo-pr/billing" },
-      { targetType: "service", targetId: "billing-api", name: "billing-test", run: "npm test", cwd: "/tmp/multirepo-pr/billing" },
-      { targetType: "repo", targetId: "identity", name: "identity-test", run: "npm test", cwd: "/tmp/multirepo-pr/identity" }
+      { targetType: "repo", targetId: "billing", name: "billing-lint", run: "npm run lint", cwd: "/tmp/service-parade-pr/billing" },
+      { targetType: "service", targetId: "billing-api", name: "billing-test", run: "npm test", cwd: "/tmp/service-parade-pr/billing" },
+      { targetType: "repo", targetId: "identity", name: "identity-test", run: "npm test", cwd: "/tmp/service-parade-pr/identity" }
     ],
     recommendedOrder: changeSet.recommendedOrder,
     risks: []

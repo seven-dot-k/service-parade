@@ -9,7 +9,7 @@ import { indexGraph } from "../src/graph/indexer.ts";
 import { startGraphPreview } from "../src/graph/preview.ts";
 
 test("graph preview serves a read-only HTML view and graph JSON", async (t) => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "multirepo-preview-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "service-parade-preview-"));
   await mkdir(path.join(root, "web"));
   await mkdir(path.join(root, "orders"));
   await writeFile(path.join(root, "web", "server.ts"), 'fetch("http://orders-svc/health");\n', "utf8");
@@ -40,7 +40,7 @@ test("graph preview serves a read-only HTML view and graph JSON", async (t) => {
 });
 
 test("graph preview does not create storage in an unindexed workspace", async (t) => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "multirepo-preview-empty-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "service-parade-preview-empty-"));
   const catalog = await normalizeCatalog({
     repos: [{ id: "web", path: "." }],
     services: [{ id: "web-api", repoId: "web" }]
@@ -49,13 +49,13 @@ test("graph preview does not create storage in an unindexed workspace", async (t
   t.after(() => preview.server.close());
 
   const model = await fetch(`${preview.url}/api/graph`).then((response) => response.json());
-  await assert.rejects(() => access(path.join(root, ".multirepo", "graph", "graph.sqlite")));
+  await assert.rejects(() => access(path.join(root, ".service-parade", "graph", "graph.sqlite")));
   assert.equal(model.status.indexed, false);
   assert.equal(model.dependencies.length, 0);
 });
 
 test("graph preview rejects writes and unknown paths", async (t) => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "multirepo-preview-routing-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "service-parade-preview-routing-"));
   const catalog = await normalizeCatalog({
     repos: [{ id: "web", path: "." }],
     services: [{ id: "web-api", repoId: "web" }]

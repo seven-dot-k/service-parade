@@ -13,12 +13,12 @@ import { planChangeSet } from "../planner.ts";
 import type { NormalizedCatalog } from "../types.ts";
 import { getGraphStatus, listDependencies, listEndpoints, listPendingLinkDetails, queryTransitiveImpact } from "../graph/query.ts";
 
-export type MultiRepoMcpOptions = {
+export type ServiceParadeMcpOptions = {
   root: string;
   config?: string;
 };
 
-export function createMultiRepoMcpServer(options: MultiRepoMcpOptions): McpServer {
+export function createServiceParadeMcpServer(options: ServiceParadeMcpOptions): McpServer {
   const root = path.resolve(options.root);
   const server = new McpServer({
     name: "service-parade-control-plane",
@@ -27,7 +27,7 @@ export function createMultiRepoMcpServer(options: MultiRepoMcpOptions): McpServe
 
   server.registerResource(
     "catalog",
-    "multirepo://catalog",
+    "service-parade://catalog",
     {
       description: "Normalized repository and service catalog.",
       mimeType: "application/json"
@@ -37,7 +37,7 @@ export function createMultiRepoMcpServer(options: MultiRepoMcpOptions): McpServe
 
   server.registerResource(
     "graph-status",
-    "multirepo://graph/status",
+    "service-parade://graph/status",
     {
       description: "Graph indexing and enrichment freshness status.",
       mimeType: "application/json"
@@ -47,7 +47,7 @@ export function createMultiRepoMcpServer(options: MultiRepoMcpOptions): McpServe
 
   server.registerResource(
     "dependency-graph",
-    "multirepo://graph/dependencies",
+    "service-parade://graph/dependencies",
     {
       description: "Accepted HTTP dependency graph. Empty until graph enrichment has run.",
       mimeType: "application/json"
@@ -60,7 +60,7 @@ export function createMultiRepoMcpServer(options: MultiRepoMcpOptions): McpServe
 
   server.registerResource(
     "pending-links",
-    "multirepo://graph/pending-links",
+    "service-parade://graph/pending-links",
     {
       description: "Discovered HTTP links awaiting review. Empty until graph enrichment has run.",
       mimeType: "application/json"
@@ -69,7 +69,7 @@ export function createMultiRepoMcpServer(options: MultiRepoMcpOptions): McpServe
   );
 
   server.registerTool(
-    "multirepo_plan_change_set",
+    "service_parade_plan_change_set",
     {
       description: "Produce an explainable likely change-set plan from an inline feature specification.",
       inputSchema: {
@@ -92,7 +92,7 @@ export function createMultiRepoMcpServer(options: MultiRepoMcpOptions): McpServe
   );
 
   server.registerTool(
-    "multirepo_graph_dependencies",
+    "service_parade_graph_dependencies",
     {
       description: "List accepted HTTP dependencies, optionally filtered by service and direction.",
       inputSchema: {
@@ -105,7 +105,7 @@ export function createMultiRepoMcpServer(options: MultiRepoMcpOptions): McpServe
   );
 
   server.registerTool(
-    "multirepo_graph_impact",
+    "service_parade_graph_impact",
     {
       description: "Find services transitively impacted by a change to the target service.",
       inputSchema: {
@@ -118,7 +118,7 @@ export function createMultiRepoMcpServer(options: MultiRepoMcpOptions): McpServe
   );
 
   server.registerTool(
-    "multirepo_graph_endpoints",
+    "service_parade_graph_endpoints",
     {
       description: "List indexed HTTP endpoints, optionally filtered by service.",
       inputSchema: {
@@ -147,7 +147,7 @@ async function loadPendingLinkDetails(root: string, config?: string) {
 }
 
 async function planInlineSpec(catalog: NormalizedCatalog, spec: string) {
-  const tempDir = await mkdtemp(path.join(os.tmpdir(), "multirepo-mcp-spec-"));
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), "service-parade-mcp-spec-"));
   const specPath = path.join(tempDir, "spec.md");
   try {
     await writeFile(specPath, spec, "utf8");

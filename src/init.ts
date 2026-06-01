@@ -5,7 +5,7 @@ import { writeText } from "./fs.ts";
 
 export async function initProject(root: string): Promise<string[]> {
   const created: string[] = [];
-  const configPath = path.join(root, "multirepo.yaml");
+  const configPath = path.join(root, "service-parade.yaml");
   try {
     await access(configPath);
   } catch {
@@ -20,7 +20,7 @@ export async function initProject(root: string): Promise<string[]> {
 
 function starterConfig(): string {
   return `# Service Parade catalog.
-# Declare existing local clones. Run "node src/cli.ts scan" to infer package scripts and manifests.
+# Declare existing local clones. Run "service-parade scan" to infer package scripts and manifests.
 repos:
   - id: example
     path: ../example

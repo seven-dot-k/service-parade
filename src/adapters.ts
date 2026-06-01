@@ -11,7 +11,7 @@ export function renderAgentsMd(catalog: NormalizedCatalog): string {
 
 export function renderClaudeMd(catalog: NormalizedCatalog): string {
   return renderAgentFile("CLAUDE.md", catalog, [
-    "Use the service catalog as the source of truth for multi-repo boundaries.",
+    "Use the service catalog as the source of truth for cross-repo boundaries.",
     "Plan cross-service changes before implementing.",
     "Prefer explicit catalog commands over guessed package scripts.",
     "Call out missing catalog data as follow-up rather than inventing ownership or dependency facts."
@@ -33,7 +33,7 @@ function renderAgentFile(title: string, catalog: NormalizedCatalog, guidance: st
     ),
     ``,
     `## Dependencies`,
-    `- HTTP dependencies are discovered by \`multirepo graph enrich\`; use \`multirepo graph deps\` to inspect accepted edges.`,
+    `- HTTP dependencies are discovered by \`service-parade graph enrich\`; use \`service-parade graph deps\` to inspect accepted edges.`,
     ``,
     `## Operating Guidance`,
     ...guidance.map((item) => `- ${item}`)

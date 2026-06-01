@@ -4,7 +4,7 @@
   "description": "Service Parade: coordinated movement across microservices, with a hint of managed chaos.",
   "type": "module",
   "bin": {
-    "multirepo": "./src/cli.ts"
+    "service-parade": "./src/cli.ts"
   },
   "scripts": {
     "test": "node --test tests/*.test.ts",
@@ -14,7 +14,7 @@
     "node": ">=22.18.0"
   },
   "keywords": [
-    "multi-repo",
+    "cross-repo",
     "service-parade",
     "agentic-coding",
     "codex",

@@ -8,7 +8,7 @@ import { enrichmentInputHash } from "../src/graph/enrich.ts";
 import { planChangeSet } from "../src/planner.ts";
 
 test("planner selects direct matches and dependency neighbors", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "multirepo-plan-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "service-parade-plan-"));
   const specPath = path.join(root, "feature.md");
   await writeFile(specPath, "Add billing-api support for identity account checks.", "utf8");
 
@@ -25,10 +25,10 @@ test("planner selects direct matches and dependency neighbors", async () => {
     },
     root
   );
-  await mkdir(path.join(root, ".multirepo", "graph"), { recursive: true });
-  await writeFile(path.join(root, ".multirepo", "graph", "index-manifest.json"), JSON.stringify({ hash: "abc" }), "utf8");
+  await mkdir(path.join(root, ".service-parade", "graph"), { recursive: true });
+  await writeFile(path.join(root, ".service-parade", "graph", "index-manifest.json"), JSON.stringify({ hash: "abc" }), "utf8");
   await writeFile(
-    path.join(root, ".multirepo", "graph", "dependencies.json"),
+    path.join(root, ".service-parade", "graph", "dependencies.json"),
     JSON.stringify({
       indexManifestHash: enrichmentInputHash("abc", catalog),
       pendingCount: 0,
@@ -61,7 +61,7 @@ test("planner selects direct matches and dependency neighbors", async () => {
 });
 
 test("planner matches aliases and refuses stale graph expansion", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "multirepo-plan-stale-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "service-parade-plan-stale-"));
   const specPath = path.join(root, "feature.md");
   await writeFile(specPath, "Update checkout behavior in storefront.", "utf8");
   const catalog = await normalizeCatalog({
@@ -74,9 +74,9 @@ test("planner matches aliases and refuses stale graph expansion", async () => {
       { id: "orders-api", repoId: "orders" }
     ]
   }, root);
-  await mkdir(path.join(root, ".multirepo", "graph"), { recursive: true });
-  await writeFile(path.join(root, ".multirepo", "graph", "index-manifest.json"), JSON.stringify({ hash: "new" }), "utf8");
-  await writeFile(path.join(root, ".multirepo", "graph", "dependencies.json"), JSON.stringify({
+  await mkdir(path.join(root, ".service-parade", "graph"), { recursive: true });
+  await writeFile(path.join(root, ".service-parade", "graph", "index-manifest.json"), JSON.stringify({ hash: "new" }), "utf8");
+  await writeFile(path.join(root, ".service-parade", "graph", "dependencies.json"), JSON.stringify({
     indexManifestHash: enrichmentInputHash("old", catalog),
     pendingCount: 0,
     dependencies: [{
@@ -103,15 +103,15 @@ test("planner matches aliases and refuses stale graph expansion", async () => {
 });
 
 test("planner reports cycles in affected dependencies", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "multirepo-plan-cycle-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "service-parade-plan-cycle-"));
   const specPath = path.join(root, "feature.md");
   await writeFile(specPath, "Change alpha-api and beta-api.", "utf8");
   const catalog = await normalizeCatalog({
     repos: [{ id: "alpha", path: "." }, { id: "beta", path: "." }],
     services: [{ id: "alpha-api", repoId: "alpha" }, { id: "beta-api", repoId: "beta" }]
   }, root);
-  await mkdir(path.join(root, ".multirepo", "graph"), { recursive: true });
-  await writeFile(path.join(root, ".multirepo", "graph", "index-manifest.json"), JSON.stringify({ hash: "cycle" }), "utf8");
+  await mkdir(path.join(root, ".service-parade", "graph"), { recursive: true });
+  await writeFile(path.join(root, ".service-parade", "graph", "index-manifest.json"), JSON.stringify({ hash: "cycle" }), "utf8");
   const edge = (id: string, from: string, to: string) => ({
     id,
     sourceServiceId: from,
@@ -126,7 +126,7 @@ test("planner reports cycles in affected dependencies", async () => {
     decidedBy: "auto",
     evidence: { file: `${from}.ts`, line: 1, rawUrl: "\"/status\"" }
   });
-  await writeFile(path.join(root, ".multirepo", "graph", "dependencies.json"), JSON.stringify({
+  await writeFile(path.join(root, ".service-parade", "graph", "dependencies.json"), JSON.stringify({
     indexManifestHash: enrichmentInputHash("cycle", catalog),
     pendingCount: 0,
     dependencies: [edge("a", "alpha-api", "beta-api"), edge("b", "beta-api", "alpha-api")]
@@ -138,7 +138,7 @@ test("planner reports cycles in affected dependencies", async () => {
 });
 
 test("planner falls back to repo triage when nothing matches", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "multirepo-plan-fallback-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "service-parade-plan-fallback-"));
   const specPath = path.join(root, "feature.md");
   await writeFile(specPath, "Rewrite the moonbeam allocator.", "utf8");
 

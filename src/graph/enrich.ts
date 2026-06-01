@@ -112,7 +112,7 @@ export async function loadIndexManifest(root: string): Promise<GraphIndexManifes
   try {
     return JSON.parse(await readFile(resolveGraph(root, "index-manifest.json"), "utf8")) as GraphIndexManifest;
   } catch {
-    throw new Error('No graph index found. Run "multirepo graph index" before enriching dependencies.');
+    throw new Error('No graph index found. Run "service-parade graph index" before enriching dependencies.');
   }
 }
 
@@ -149,7 +149,7 @@ export function saveLinkDecision(
   try {
     const pending = storage.getPendingLink(pendingId);
     if (!pending) {
-      throw new Error(`Unknown pending link "${pendingId}". Run "multirepo graph links list" to inspect the queue.`);
+      throw new Error(`Unknown pending link "${pendingId}". Run "service-parade graph links list" to inspect the queue.`);
     }
     if (decision === "approved") {
       if (!targetEndpointId) {

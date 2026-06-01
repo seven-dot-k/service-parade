@@ -11,7 +11,7 @@ import {
 import type { ChangeSet, NormalizedCatalog } from "../src/types.ts";
 
 test("workspace manifest carries dependency evidence and executable verification commands", () => {
-  const { catalog, changeSet } = fixture("/tmp/multirepo-workspace");
+  const { catalog, changeSet } = fixture("/tmp/service-parade-workspace");
   changeSet.affectedRepos[0].commands = [{ name: "tampered", run: "rm -rf /" }];
   changeSet.affectedServices[0].commands = [{ name: "tampered", run: "rm -rf /" }];
 
@@ -28,16 +28,16 @@ test("workspace manifest carries dependency evidence and executable verification
   assert.deepEqual(
     manifest.verificationCommands.map((command) => [command.targetType, command.targetId, command.name, command.cwd]),
     [
-      ["repo", "billing", "lint", "/tmp/multirepo-workspace/billing"],
-      ["service", "billing-api", "test", "/tmp/multirepo-workspace/billing/services/api"]
+      ["repo", "billing", "lint", "/tmp/service-parade-workspace/billing"],
+      ["service", "billing-api", "test", "/tmp/service-parade-workspace/billing/services/api"]
     ]
   );
 });
 
 test("workspace assembly writes a manifest and repo-specific agent handoffs", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "multirepo-workspace-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "service-parade-workspace-"));
   const { catalog, changeSet } = fixture(root);
-  const output = path.join(root, ".multirepo", "workspace");
+  const output = path.join(root, ".service-parade", "workspace");
 
   const bundle = await assembleWorkspaceBundle(catalog, changeSet, output);
   const manifest = await readFile(path.join(output, "workspace-manifest.json"), "utf8");
@@ -54,7 +54,7 @@ test("workspace assembly writes a manifest and repo-specific agent handoffs", as
 });
 
 test("repo handoff directories encode unsafe path segments", () => {
-  const { catalog, changeSet } = fixture("/tmp/multirepo-workspace");
+  const { catalog, changeSet } = fixture("/tmp/service-parade-workspace");
   catalog.repos[0].id = "..";
   catalog.services[0].repoId = "..";
   changeSet.affectedRepos[0].id = "..";

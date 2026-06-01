@@ -14,7 +14,7 @@ import type { GraphIndexManifest } from "./types.ts";
 
 const exec = promisify(execFile);
 const excluded = new Set([
-  ".git", ".multirepo", ".codeiq", "node_modules", "dist", "build", "out", "bin", "obj",
+  ".git", ".service-parade", ".codeiq", "node_modules", "dist", "build", "out", "bin", "obj",
   "coverage", ".next", ".nuxt", ".cache", "target", "vendor"
 ]);
 

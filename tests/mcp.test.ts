@@ -7,9 +7,9 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
 test("stdio MCP server exposes catalog, graph resources, and inline planning", async (t) => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "multirepo-mcp-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "service-parade-mcp-"));
   await mkdir(path.join(root, "billing"), { recursive: true });
-  await writeFile(path.join(root, "multirepo.yaml"), [
+  await writeFile(path.join(root, "service-parade.yaml"), [
     "repos:",
     "  - id: billing",
     "    path: billing",
@@ -26,7 +26,7 @@ test("stdio MCP server exposes catalog, graph resources, and inline planning", a
     stderr: "pipe"
   });
   const client = new Client({
-    name: "multirepo-mcp-integration-test",
+    name: "service-parade-mcp-integration-test",
     version: "0.1.0"
   });
   t.after(async () => {
@@ -36,33 +36,33 @@ test("stdio MCP server exposes catalog, graph resources, and inline planning", a
 
   const resources = await client.listResources();
   assert.deepEqual(resources.resources.map((resource) => resource.uri).sort(), [
-    "multirepo://catalog",
-    "multirepo://graph/dependencies",
-    "multirepo://graph/pending-links",
-    "multirepo://graph/status"
+    "service-parade://catalog",
+    "service-parade://graph/dependencies",
+    "service-parade://graph/pending-links",
+    "service-parade://graph/status"
   ]);
 
-  const catalog = await client.readResource({ uri: "multirepo://catalog" });
+  const catalog = await client.readResource({ uri: "service-parade://catalog" });
   assert.equal(JSON.parse(textOf(catalog.contents[0])).services[0].id, "billing-api");
 
-  const dependencies = await client.readResource({ uri: "multirepo://graph/dependencies" });
+  const dependencies = await client.readResource({ uri: "service-parade://graph/dependencies" });
   assert.deepEqual(JSON.parse(textOf(dependencies.contents[0])), {
     dependencies: [],
     pendingCount: 0
   });
 
-  const pendingLinks = await client.readResource({ uri: "multirepo://graph/pending-links" });
+  const pendingLinks = await client.readResource({ uri: "service-parade://graph/pending-links" });
   assert.deepEqual(JSON.parse(textOf(pendingLinks.contents[0])), []);
 
   const tools = await client.listTools();
   assert.deepEqual(tools.tools.map((tool) => tool.name).sort(), [
-    "multirepo_graph_dependencies",
-    "multirepo_graph_endpoints",
-    "multirepo_graph_impact",
-    "multirepo_plan_change_set"
+    "service_parade_graph_dependencies",
+    "service_parade_graph_endpoints",
+    "service_parade_graph_impact",
+    "service_parade_plan_change_set"
   ]);
   const result = await client.callTool({
-    name: "multirepo_plan_change_set",
+    name: "service_parade_plan_change_set",
     arguments: { spec: "Add billing-api invoice adjustments." }
   });
   assert.equal(result.isError, undefined);
@@ -74,7 +74,7 @@ test("stdio MCP server exposes catalog, graph resources, and inline planning", a
   assert.equal(plan.specPath.startsWith(os.tmpdir()), true);
 
   const impact = await client.callTool({
-    name: "multirepo_graph_impact",
+    name: "service_parade_graph_impact",
     arguments: { serviceId: "billing-api", maxDepth: 1 }
   });
   if (!Array.isArray(impact.content) || impact.content[0]?.type !== "text") {

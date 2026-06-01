@@ -8,7 +8,7 @@ import { normalizeCatalog } from "../src/catalog.ts";
 import type { CatalogConfig } from "../src/types.ts";
 
 test("normalizes a catalog and keeps explicit service values over inference", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "multirepo-catalog-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "service-parade-catalog-"));
   const repoPath = path.join(root, "billing");
   await mkdir(repoPath);
   await writeFile(
@@ -41,7 +41,7 @@ test("normalizes a catalog and keeps explicit service values over inference", as
 });
 
 test("rejects legacy catalog dependencies with a migration message", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "multirepo-invalid-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "service-parade-invalid-"));
   const config = {
     repos: [{ id: "billing", path: "." }],
     services: [{ id: "billing-api", repoId: "billing" }],
@@ -52,7 +52,7 @@ test("rejects legacy catalog dependencies with a migration message", async () =>
 });
 
 test("generates Codex and Claude instruction files from the same catalog", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "multirepo-adapters-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "service-parade-adapters-"));
   const catalog = await normalizeCatalog(
     {
       repos: [{ id: "identity", path: "." }],

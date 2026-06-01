@@ -10,7 +10,7 @@ import { closeProjection } from "../src/graph/projection.ts";
 import { planChangeSet } from "../src/planner.ts";
 
 test("indexes, enriches, reviews, and plans from discovered HTTP dependencies", async (t) => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "multirepo-graph-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "service-parade-graph-"));
   t.after(() => closeProjection(root));
   await write(root, "storefront/server.ts", [
     `app.get("/local", () => {});`,
@@ -50,10 +50,10 @@ test("indexes, enriches, reviews, and plans from discovered HTTP dependencies", 
   }, root);
 
   const firstIndex = await indexGraph(root, catalog);
-  const firstManifest = await readFile(path.join(root, ".multirepo", "graph", "index-manifest.json"), "utf8");
+  const firstManifest = await readFile(path.join(root, ".service-parade", "graph", "index-manifest.json"), "utf8");
   assert.equal(firstIndex.parsed, 6);
   const secondIndex = await indexGraph(root, catalog);
-  const secondManifest = await readFile(path.join(root, ".multirepo", "graph", "index-manifest.json"), "utf8");
+  const secondManifest = await readFile(path.join(root, ".service-parade", "graph", "index-manifest.json"), "utf8");
   assert.equal(secondIndex.cacheHits, firstIndex.files);
   assert.equal(secondIndex.manifestHash, firstIndex.manifestHash);
   assert.equal(secondManifest, firstManifest);
@@ -63,9 +63,9 @@ test("indexes, enriches, reviews, and plans from discovered HTTP dependencies", 
 
   const firstEnrich = await enrichGraph(root, catalog);
   assert.equal(firstEnrich.dependencies, 5);
-  const firstDependencies = await readFile(path.join(root, ".multirepo", "graph", "dependencies.json"), "utf8");
+  const firstDependencies = await readFile(path.join(root, ".service-parade", "graph", "dependencies.json"), "utf8");
   await enrichGraph(root, catalog);
-  const secondDependencies = await readFile(path.join(root, ".multirepo", "graph", "dependencies.json"), "utf8");
+  const secondDependencies = await readFile(path.join(root, ".service-parade", "graph", "dependencies.json"), "utf8");
   assert.equal(secondDependencies, firstDependencies);
   const artifact = await loadDependencyArtifact(root);
   assert.ok(artifact);

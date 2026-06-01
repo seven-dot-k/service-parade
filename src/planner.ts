@@ -162,9 +162,9 @@ function buildRisks(
     risks.push("No service-level match was found; human triage should confirm scope.");
   }
   if (graph.missing) {
-    risks.push('No discovered dependency graph is available; run "multirepo graph index" and "multirepo graph enrich".');
+    risks.push('No discovered dependency graph is available; run "service-parade graph index" and "service-parade graph enrich".');
   } else if (graph.stale) {
-    risks.push('The discovered dependency graph is stale; run "multirepo graph enrich" before relying on blast-radius analysis.');
+    risks.push('The discovered dependency graph is stale; run "service-parade graph enrich" before relying on blast-radius analysis.');
   }
   if (graph.dependencies.length === 0) {
     risks.push("The discovered graph has no accepted HTTP dependencies, so blast-radius analysis is limited.");

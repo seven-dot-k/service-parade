@@ -2,19 +2,19 @@
 import type { Readable, Writable } from "node:stream";
 import { pathToFileURL } from "node:url";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { createMultiRepoMcpServer, type MultiRepoMcpOptions } from "./server.ts";
+import { createServiceParadeMcpServer, type ServiceParadeMcpOptions } from "./server.ts";
 
-export type MultiRepoStdioOptions = MultiRepoMcpOptions & {
+export type ServiceParadeStdioOptions = ServiceParadeMcpOptions & {
   stdin?: Readable;
   stdout?: Writable;
 };
 
-export async function startMultiRepoStdioServer(options: MultiRepoStdioOptions): Promise<void> {
-  const server = createMultiRepoMcpServer(options);
+export async function startServiceParadeStdioServer(options: ServiceParadeStdioOptions): Promise<void> {
+  const server = createServiceParadeMcpServer(options);
   await server.connect(new StdioServerTransport(options.stdin, options.stdout));
 }
 
-function parseArgs(argv: string[]): MultiRepoMcpOptions {
+function parseArgs(argv: string[]): ServiceParadeMcpOptions {
   let root = process.cwd();
   let config: string | undefined;
   for (let index = 0; index < argv.length; index += 1) {
@@ -37,7 +37,7 @@ function parseArgs(argv: string[]): MultiRepoMcpOptions {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  startMultiRepoStdioServer(parseArgs(process.argv.slice(2))).catch((error: unknown) => {
+  startServiceParadeStdioServer(parseArgs(process.argv.slice(2))).catch((error: unknown) => {
     process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
     process.exitCode = 1;
   });

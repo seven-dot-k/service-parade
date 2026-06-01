@@ -29,7 +29,7 @@ often lack the system-level context needed to:
 
 Spec-driven development helps describe the desired behavior, but a spec alone
 does not provide the operational map or orchestration layer needed for reliable
-multi-repo execution.
+cross-repo execution.
 
 ## Product Direction
 
@@ -37,7 +37,7 @@ Develop the control plane incrementally around these capabilities:
 
 1. Service catalog and dependency graph.
 2. Spec-to-change-set planner.
-3. Multi-repo workspace assembler.
+3. Cross-repo workspace assembler.
 4. MCP server exposing repository, CI, documentation, ticket, and log tools.
 5. Agent instruction generator using `AGENTS.md` and compatible adapters.
 6. Cross-repo test harness.
@@ -49,13 +49,13 @@ Develop the control plane incrementally around these capabilities:
 Keep the first release intentionally small and useful. V1 is a TypeScript/Node
 CLI backed by files on disk. It should:
 
-- read `multirepo.yaml` or equivalent JSON configuration;
+- read `service-parade.yaml` or equivalent JSON configuration;
 - scan existing local repository clones without cloning remotes;
 - emit a normalized service catalog and dependency graph;
 - produce a likely change-set plan from a feature specification;
 - assemble workspace guidance for the affected repositories;
 - generate explicit instructions for Codex and Claude Code; and
-- run configured verification commands and record results in `.multirepo/`.
+- run configured verification commands and record results in `.service-parade/`.
 
 Build CLI and reusable modules first. Add MCP, CI integrations, ticketing,
 logs, and pull-request automation as layers over the same core model rather
@@ -87,7 +87,7 @@ catalog of local repositories, then receive:
 
 ## Working Guidance For Agents
 
-- Read `README.md`, `multirepo.yaml` when present, and relevant tests before
+- Read `README.md`, `service-parade.yaml` when present, and relevant tests before
   changing behavior.
 - Preserve the V1 local-first boundary unless a task explicitly expands scope.
 - Keep core domain logic reusable from both the CLI and a future MCP server.

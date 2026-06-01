@@ -8,7 +8,7 @@ import type { ChangeSet } from "../src/types.ts";
 import { verifyPlan } from "../src/verify.ts";
 
 test("verification ignores commands serialized in a tampered plan", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "multirepo-verify-plan-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "service-parade-verify-plan-"));
   const repoPath = path.join(root, "repo-a");
   await mkdir(repoPath);
   const catalog = await normalizeCatalog(
@@ -38,7 +38,7 @@ test("verification ignores commands serialized in a tampered plan", async () => 
 });
 
 test("verification rejects a command cwd that escapes its owning repo", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "multirepo-verify-cwd-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "service-parade-verify-cwd-"));
   await mkdir(path.join(root, "repo-a"));
   await assert.rejects(
     () => normalizeCatalog({
@@ -53,7 +53,7 @@ test("verification rejects a command cwd that escapes its owning repo", async ()
 });
 
 test("verification rejects unknown affected IDs from a tampered plan", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "multirepo-verify-owner-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "service-parade-verify-owner-"));
   const catalog = await normalizeCatalog({ repos: [{ id: "repo-a", path: "." }] }, root);
 
   await assert.rejects(
@@ -65,7 +65,7 @@ test("verification rejects unknown affected IDs from a tampered plan", async () 
 });
 
 test("catalog rejects globally scoped commands with unknown owners", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "multirepo-verify-global-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "service-parade-verify-global-"));
 
   await assert.rejects(
     () => normalizeCatalog({
@@ -77,7 +77,7 @@ test("catalog rejects globally scoped commands with unknown owners", async () =>
 });
 
 test("nested service commands default to execution from the service root", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "multirepo-verify-service-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "service-parade-verify-service-"));
   const servicePath = path.join(root, "repo-a", "services", "orders");
   await mkdir(servicePath, { recursive: true });
   const catalog = await normalizeCatalog(

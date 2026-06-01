@@ -105,7 +105,7 @@ test("lists endpoint facts and enriches pending links with readable details", as
 });
 
 async function createFixture() {
-  const root = await mkdtemp(path.join(os.tmpdir(), "multirepo-graph-query-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "service-parade-graph-query-"));
   for (const repo of ["cart", "orders", "inventory"]) {
     await mkdir(path.join(root, repo), { recursive: true });
   }

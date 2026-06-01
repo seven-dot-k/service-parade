@@ -17,7 +17,7 @@ export async function findConfig(root: string, explicit?: string): Promise<strin
       // Try the next candidate.
     }
   }
-  throw new Error(`No catalog config found. Run "multirepo init" to create multirepo.yaml.`);
+  throw new Error(`No catalog config found. Run "service-parade init" to create service-parade.yaml.`);
 }
 
 export async function loadConfig(root: string, explicit?: string): Promise<{ path: string; config: CatalogConfig }> {

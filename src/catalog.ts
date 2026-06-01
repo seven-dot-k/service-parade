@@ -41,7 +41,7 @@ export async function normalizeCatalog(config: CatalogConfig, root: string): Pro
 export function validateConfig(config: CatalogConfig): void {
   if ("dependencies" in config) {
     throw new Error(
-      'The "dependencies" catalog section is no longer supported. Remove it and run "multirepo graph index" followed by "multirepo graph enrich" to discover HTTP dependencies.'
+      'The "dependencies" catalog section is no longer supported. Remove it and run "service-parade graph index" followed by "service-parade graph enrich" to discover HTTP dependencies.'
     );
   }
   const repos = config.repos ?? [];

@@ -1,4 +1,4 @@
-.multirepo/
+.service-parade/
 node_modules/
 dist/
 .DS_Store

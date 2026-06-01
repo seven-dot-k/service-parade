@@ -17,7 +17,7 @@ import { closeProjection } from "./graph/projection.ts";
 import { getGraphStatus, listDependencies, listEndpoints, listPendingLinkDetails, queryTransitiveImpact } from "./graph/query.ts";
 import { startGraphPreview } from "./graph/preview.ts";
 import { assembleWorkspaceBundle } from "./workspace/index.ts";
-import { startMultiRepoStdioServer } from "./mcp/stdio.ts";
+import { startServiceParadeStdioServer } from "./mcp/stdio.ts";
 import { createPrOrchestrationPlan, renderPrOrchestrationPlan } from "./pr/orchestrator.ts";
 import type { WorkspaceManifest } from "./workspace/types.ts";
 
@@ -86,7 +86,7 @@ async function main(): Promise<void> {
       return;
     }
     case "mcp": {
-      await startMultiRepoStdioServer({
+      await startServiceParadeStdioServer({
         root,
         config: typeof args.flags.config === "string" ? args.flags.config : undefined
       });
@@ -327,15 +327,15 @@ function requirePositional(positionals: string[], index: number, label: string):
 }
 
 function help(): string {
-  return `Usage: multirepo <command> [options]
+  return `Usage: service-parade <command> [options]
 
 Commands:
-  init                    Create multirepo.yaml and .multirepo/
-  scan                    Infer repo metadata and write .multirepo/catalog.json
+  init                    Create service-parade.yaml and .service-parade/
+  scan                    Infer repo metadata and write .service-parade/catalog.json
   catalog                 Validate and write normalized catalog
-  plan --spec <file>      Create .multirepo/change-set.{json,md}
-  assemble [--plan file]  Create .multirepo/workspace.md
-  instructions            Create .multirepo/AGENTS.md and .multirepo/CLAUDE.md
+  plan --spec <file>      Create .service-parade/change-set.{json,md}
+  assemble [--plan file]  Create .service-parade/workspace.md
+  instructions            Create .service-parade/AGENTS.md and .service-parade/CLAUDE.md
   verify [--plan file]    Run configured commands and write verification reports
   graph index             Incrementally index HTTP facts under declared services
   graph enrich            Match HTTP calls to endpoints and rebuild the graph
@@ -354,15 +354,15 @@ Options:
 }
 
 function prHelp(): string {
-  return `Usage: multirepo pr <command>
+  return `Usage: service-parade pr <command>
 
 Commands:
-  plan [--plan file]      Write .multirepo/pr-plan.{json,md}
+  plan [--plan file]      Write .service-parade/pr-plan.{json,md}
 `;
 }
 
 function graphHelp(): string {
-  return `Usage: multirepo graph <command>
+  return `Usage: service-parade graph <command>
 
 Commands:
   index
