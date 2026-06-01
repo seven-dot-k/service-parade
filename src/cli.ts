@@ -34,7 +34,7 @@ async function main(): Promise<void> {
   switch (args.command) {
     case "init": {
       const created = await initProject(root);
-      print(`Initialized multi-repo control plane:\n${created.map((item) => `- ${item}`).join("\n")}`);
+      print(`Initialized Service Parade:\n${created.map((item) => `- ${item}`).join("\n")}`);
       return;
     }
     case "scan":

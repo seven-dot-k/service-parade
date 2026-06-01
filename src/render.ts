@@ -27,7 +27,7 @@ export function renderChangeSet(plan: ChangeSet): string {
 export function renderWorkspace(catalog: NormalizedCatalog, plan: ChangeSet): string {
   const services = new Set(plan.affectedServices.map((service) => service.id));
   return [
-    `# Multi-Repo Workspace`,
+    `# Service Parade Workspace`,
     ``,
     `Use this bundle as the handoff context for an agentic coding session.`,
     ``,

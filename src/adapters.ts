@@ -22,7 +22,7 @@ function renderAgentFile(title: string, catalog: NormalizedCatalog, guidance: st
   return [
     `# ${title}`,
     ``,
-    `Generated from the multi-repo control plane catalog.`,
+    `Generated from the Service Parade catalog.`,
     ``,
     `## Repositories`,
     ...catalog.repos.map((repo) => `- ${repo.id}: ${repo.path} (${repo.owner ?? "unowned"})`),

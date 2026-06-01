@@ -46,7 +46,7 @@ export function createPrOrchestrationPlan(
     return {
       repoId,
       repoPath: repo.absolutePath,
-      branchSuggestion: `multirepo/${slug(changeSet.summary)}-${slug(repoId)}`,
+      branchSuggestion: `service-parade/${slug(changeSet.summary)}-${slug(repoId)}`,
       title: `[${repoId}] ${changeSet.summary}`,
       affectedServiceIds,
       dependencyEvidence,

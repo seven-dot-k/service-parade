@@ -1,8 +1,10 @@
-# Multi-Repo Agent Control Plane
+# Service Parade
+
+Coordinated movement across microservices, with a hint of managed chaos.
 
 ## Project Goal
 
-Build an open-source, local-first engineering control plane that helps agentic
+Build Service Parade: an open-source, local-first engineering control plane that helps agentic
 coding tools safely plan, implement, verify, and coordinate software changes
 across multiple repositories and microservices.
 

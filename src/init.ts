@@ -19,7 +19,7 @@ export async function initProject(root: string): Promise<string[]> {
 }
 
 function starterConfig(): string {
-  return `# Multi-repo control plane catalog.
+  return `# Service Parade catalog.
 # Declare existing local clones. Run "node src/cli.ts scan" to infer package scripts and manifests.
 repos:
   - id: example

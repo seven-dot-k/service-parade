@@ -98,7 +98,7 @@ export function renderGraphPreviewHtml(): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Multi-Repo HTTP Graph</title>
+  <title>Service Parade HTTP Graph</title>
   <style>
     :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #0b1020; color: #e7ecff; }
     body { margin: 0; min-height: 100vh; background: radial-gradient(circle at top, #172554, #0b1020 56%); }
@@ -122,7 +122,7 @@ export function renderGraphPreviewHtml(): string {
 <body>
   <main>
     <header>
-      <div><h1>HTTP Dependency Graph</h1><p>Read-only local preview from <code>.multirepo/graph</code></p></div>
+      <div><h1>Service Parade</h1><p>Coordinated movement across microservices, with a hint of managed chaos.</p></div>
       <span class="badge" id="freshness">Loading...</span>
     </header>
     <section class="panel">

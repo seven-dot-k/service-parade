@@ -21,7 +21,7 @@ export type MultiRepoMcpOptions = {
 export function createMultiRepoMcpServer(options: MultiRepoMcpOptions): McpServer {
   const root = path.resolve(options.root);
   const server = new McpServer({
-    name: "multirepo-control-plane",
+    name: "service-parade-control-plane",
     version: "0.1.0"
   });
 

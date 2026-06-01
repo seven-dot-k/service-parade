@@ -1,7 +1,7 @@
 {
-  "name": "@multi-repo/control-plane",
+  "name": "@service-parade/control-plane",
   "version": "0.1.0",
-  "description": "A file-first multi-repo engineering control plane for agentic coding tools.",
+  "description": "Service Parade: coordinated movement across microservices, with a hint of managed chaos.",
   "type": "module",
   "bin": {
     "multirepo": "./src/cli.ts"
@@ -15,6 +15,7 @@
   },
   "keywords": [
     "multi-repo",
+    "service-parade",
     "agentic-coding",
     "codex",
     "claude-code",

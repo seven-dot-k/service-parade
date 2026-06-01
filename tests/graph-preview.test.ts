@@ -29,7 +29,7 @@ test("graph preview serves a read-only HTML view and graph JSON", async (t) => {
   const html = await fetch(preview.url).then((response) => response.text());
   const model = await fetch(`${preview.url}/api/graph`).then((response) => response.json());
 
-  assert.match(html, /HTTP Dependency Graph/);
+  assert.match(html, /Service Parade/);
   assert.match(html, /marker-end/);
   assert.match(html, /marker-start/);
   assert.match(html, /group\.left \+ arrowText \+ group\.right/);

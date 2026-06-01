@@ -1,6 +1,8 @@
-# Multi-Repo Agent Control Plane
+# Service Parade
 
-A local-first control plane for helping agentic coding tools understand and operate across multiple repositories and services.
+Coordinated movement across microservices, with a hint of managed chaos.
+
+Service Parade is a local-first control plane for helping agentic coding tools understand and operate across multiple repositories and microservices.
 
 V1 is a TypeScript/Node CLI that reads a small `multirepo.yaml`, scans existing local clones, emits a normalized service catalog, plans likely change sets from a feature spec, generates agent instructions for Codex and Claude Code, assembles workspace guidance, and records verification results.
 
