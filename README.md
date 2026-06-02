@@ -1,3 +1,13 @@
+# Human TLDR;
+
+maybe niche, but some orgs have a large number of microservices in various languages, frameworks, stacks etc.
+
+agentic harnesses still struggle with cross-service / cross-repo development 
+
+this repo is an attempt to solve that via a cli/mcp server that auto-discovers micro service connections/edges between services through requests and libraries.  
+
+that graph is then used to enhance, guide and improve spec driven development.
+
 # Service Parade
 
 Coordinated movement across microservices, with a hint of managed chaos.
