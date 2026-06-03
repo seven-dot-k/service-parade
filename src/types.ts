@@ -9,11 +9,16 @@ export type CatalogCommand = {
   cwd?: string;
 };
 
+export type HttpDiscoveryConfig = {
+  sdkPackages?: string[];
+};
+
 export type RepoConfig = {
   id: string;
   path: string;
   defaultBranch?: string;
   owner?: string;
+  httpDiscovery?: HttpDiscoveryConfig;
   commands?: CatalogCommand[];
 };
 
@@ -32,7 +37,17 @@ export type ServiceConfig = {
 export type CatalogConfig = {
   repos?: RepoConfig[];
   services?: ServiceConfig[];
+  sdkSources?: SdkSourceConfig[];
   commands?: CatalogCommand[];
+};
+
+export type SdkSourceConfig = {
+  id: string;
+  packages: string[];
+  source: string;
+  targetServiceId: string;
+  detector: string;
+  options?: Record<string, unknown>;
 };
 
 export type Inference = {
@@ -48,6 +63,9 @@ export type NormalizedRepo = Required<Pick<RepoConfig, "id" | "path">> &
     absolutePath: string;
     inferred: Inference;
     commands: CatalogCommand[];
+    httpDiscovery: {
+      sdkPackages: string[];
+    };
   };
 
 export type NormalizedService = Required<Pick<ServiceConfig, "id" | "repoId">> &
@@ -66,13 +84,30 @@ export type NormalizedCatalog = {
   root: string;
   repos: NormalizedRepo[];
   services: NormalizedService[];
+  sdkSources: NormalizedSdkSource[];
   commands: CatalogCommand[];
 };
+
+export type NormalizedSdkSource = Required<Pick<SdkSourceConfig, "id" | "source" | "targetServiceId" | "detector">> &
+  Omit<SdkSourceConfig, "id" | "source" | "targetServiceId" | "detector"> & {
+    absolutePath: string;
+    packages: string[];
+    options: Record<string, unknown>;
+  };
 
 export type HttpEvidence = {
   file: string;
   line: number;
   rawUrl: string;
+  derivedFrom?: {
+    kind: "sdk_source";
+    sdkSourceId: string;
+    packageName: string;
+    consumerFile: string;
+    consumerLine: number;
+    sdkFile: string;
+    sdkLine: number;
+  };
 };
 
 export type HttpDependency = {

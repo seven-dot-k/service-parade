@@ -5,8 +5,10 @@ import type {
   Inference,
   NormalizedCatalog,
   NormalizedRepo,
+  NormalizedSdkSource,
   NormalizedService,
   RepoConfig,
+  SdkSourceConfig,
   ServiceConfig
 } from "./types.ts";
 import {
@@ -25,8 +27,9 @@ export async function normalizeCatalog(config: CatalogConfig, root: string): Pro
   const repos = await Promise.all((config.repos ?? []).map((repo) => normalizeRepo(repo, root, globalCommands)));
   const repoById = new Map(repos.map((repo) => [repo.id, repo]));
   const services = (config.services ?? []).map((service) => normalizeService(service, repoById, globalCommands));
+  const sdkSources = (config.sdkSources ?? []).map((source) => normalizeSdkSource(source, root));
 
-  validateReferences(repos, services);
+  validateReferences(repos, services, sdkSources);
   validateGlobalCommandOwners(globalCommands, repos, services);
 
   return {
@@ -34,6 +37,7 @@ export async function normalizeCatalog(config: CatalogConfig, root: string): Pro
     root,
     repos,
     services,
+    sdkSources,
     commands: globalCommands
   };
 }
@@ -50,9 +54,11 @@ export function validateConfig(config: CatalogConfig): void {
   }
   ensureUnique(repos.map((repo) => repo.id), "repo id");
   ensureUnique((config.services ?? []).map((service) => service.id), "service id");
+  ensureUnique((config.sdkSources ?? []).map((source) => source.id), "sdk source id");
   for (const repo of repos) {
     requireString(repo.id, "repo.id");
     requireString(repo.path, `repo(${repo.id}).path`);
+    requireStringList(repo.httpDiscovery?.sdkPackages, `repo(${repo.id}).httpDiscovery.sdkPackages`);
   }
   for (const service of config.services ?? []) {
     requireString(service.id, "service.id");
@@ -62,6 +68,16 @@ export function validateConfig(config: CatalogConfig): void {
   }
   for (const command of config.commands ?? []) {
     validateCommand(command);
+  }
+  for (const source of config.sdkSources ?? []) {
+    requireString(source.id, "sdkSources.id");
+    requireString(source.source, `sdkSources(${source.id}).source`);
+    requireString(source.targetServiceId, `sdkSources(${source.id}).targetServiceId`);
+    requireString(source.detector, `sdkSources(${source.id}).detector`);
+    requireStringList(source.packages, `sdkSources(${source.id}).packages`);
+    if (!source.packages || source.packages.length === 0) {
+      throw new Error(`sdkSources(${source.id}).packages must contain at least one package pattern.`);
+    }
   }
 }
 
@@ -79,7 +95,10 @@ async function normalizeRepo(repo: RepoConfig, root: string, globalCommands: Cat
     defaultBranch: repo.defaultBranch ?? "main",
     absolutePath,
     inferred,
-    commands: dedupeCommands(commands)
+    commands: dedupeCommands(commands),
+    httpDiscovery: {
+      sdkPackages: [...new Set(repo.httpDiscovery?.sdkPackages ?? [])].sort()
+    }
   };
 }
 
@@ -113,6 +132,15 @@ function normalizeService(
   };
 }
 
+function normalizeSdkSource(source: SdkSourceConfig, root: string): NormalizedSdkSource {
+  return {
+    ...source,
+    absolutePath: path.resolve(root, source.source),
+    packages: [...new Set(source.packages)].sort(),
+    options: source.options ?? {}
+  };
+}
+
 function inferRepoCommands(repoId: string, inferred: Inference): CatalogCommand[] {
   const commands: CatalogCommand[] = [];
   const scripts = inferred.scripts ?? {};
@@ -132,12 +160,19 @@ function inferRepoCommands(repoId: string, inferred: Inference): CatalogCommand[
 
 function validateReferences(
   repos: NormalizedRepo[],
-  services: NormalizedService[]
+  services: NormalizedService[],
+  sdkSources: NormalizedSdkSource[]
 ): void {
   const repoIds = new Set(repos.map((repo) => repo.id));
+  const serviceIds = new Set(services.map((service) => service.id));
   for (const service of services) {
     if (!repoIds.has(service.repoId)) {
       throw new Error(`Service "${service.id}" references unknown repo "${service.repoId}".`);
+    }
+  }
+  for (const source of sdkSources) {
+    if (!serviceIds.has(source.targetServiceId)) {
+      throw new Error(`SDK source "${source.id}" references unknown target service "${source.targetServiceId}".`);
     }
   }
 }

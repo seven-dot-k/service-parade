@@ -54,7 +54,7 @@ export async function enrichGraph(root: string, catalog: NormalizedCatalog): Pro
           candidateEndpointIds: result.candidates.map((candidate) => candidate.id).sort(),
           score: result.score,
           reason: result.reason,
-          evidence: { file: call.file, line: call.line, rawUrl: call.rawUrl },
+          evidence: { file: call.file, line: call.line, rawUrl: call.rawUrl, derivedFrom: call.derivedFrom },
           reviewStatus: "pending_review"
         });
       }
@@ -125,6 +125,18 @@ export function enrichmentInputHash(indexManifestHash: string, catalog: Normaliz
       root: service.root,
       aliases: [...service.aliases].sort(),
       baseUrls: [...service.baseUrls].sort()
+    })).sort((a, b) => a.id.localeCompare(b.id)),
+    sdkSources: catalog.sdkSources.map((source) => ({
+      id: source.id,
+      source: source.source,
+      targetServiceId: source.targetServiceId,
+      detector: source.detector,
+      packages: [...source.packages].sort(),
+      options: source.options
+    })).sort((a, b) => a.id.localeCompare(b.id)),
+    repos: catalog.repos.map((repo) => ({
+      id: repo.id,
+      httpDiscovery: repo.httpDiscovery
     })).sort((a, b) => a.id.localeCompare(b.id))
   }));
 }
@@ -248,6 +260,6 @@ function toDependency(
     confidence,
     reviewStatus,
     decidedBy,
-    evidence: { file: call.file, line: call.line, rawUrl: call.rawUrl }
+    evidence: { file: call.file, line: call.line, rawUrl: call.rawUrl, derivedFrom: call.derivedFrom }
   };
 }

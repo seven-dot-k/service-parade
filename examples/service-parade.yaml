@@ -4,6 +4,9 @@ repos:
     path: ../billing
     defaultBranch: main
     owner: payments
+    httpDiscovery:
+      sdkPackages:
+        - Acme.Identity.Contracts
   - id: identity
     path: ../identity
     defaultBranch: main
@@ -24,6 +27,16 @@ services:
     tags: [identity, accounts]
     aliases: [identity, identity-api]
     baseUrls: [http://identity-api]
+
+sdkSources:
+  - id: identity-contract-clients
+    packages: [Acme.Identity.Contracts, Acme.Identity.Contracts.Clients]
+    source: ../identity/contracts
+    targetServiceId: identity-api
+    detector: mozu-service-client
+    options:
+      clientDir: Clients
+      codegenTargets: CCG.targets
 
 commands:
   - name: test

@@ -26,6 +26,7 @@ export type HttpCallFact = {
   path: string | null;
   host: string | null;
   dynamic: boolean;
+  derivedFrom?: HttpEvidence["derivedFrom"];
 };
 
 export type ConfigKeyFact = {

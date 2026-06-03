@@ -38,7 +38,7 @@ Generated artifacts are written to `.service-parade/`.
 
 ## Catalog Shape
 
-`service-parade.yaml` declares local repositories, services, HTTP matching hints, and optional commands. Scanner inference fills gaps, but explicit catalog values win. HTTP dependencies are discovered from source code rather than maintained manually.
+`service-parade.yaml` declares local repositories, services, HTTP matching hints, optional SDK source discovery, and optional commands. Scanner inference fills gaps, but explicit catalog values win. HTTP dependencies are discovered from source code rather than maintained manually.
 
 ```yaml
 repos:
@@ -46,6 +46,9 @@ repos:
     path: ../billing
     defaultBranch: main
     owner: payments
+    httpDiscovery:
+      sdkPackages:
+        - Acme.Identity.Contracts
 services:
   - id: billing-api
     repoId: billing
@@ -54,6 +57,15 @@ services:
     tags: [billing, api]
     aliases: [billing, billing-api]
     baseUrls: [http://billing-api]
+sdkSources:
+  - id: identity-contract-clients
+    packages: [Acme.Identity.Contracts, Acme.Identity.Contracts.Clients]
+    source: ../identity/contracts
+    targetServiceId: identity-api
+    detector: mozu-service-client
+    options:
+      clientDir: Clients
+      codegenTargets: CCG.targets
 commands:
   - name: test
     run: npm test
@@ -71,6 +83,8 @@ commands:
 ## HTTP Dependency Graph
 
 The `graph` commands incrementally index declared service roots, detect inbound HTTP endpoints and outbound calls, match accepted links, and queue ambiguous links for review.
+
+SDK source discovery is opt-in per repo. Use `repos[].httpDiscovery.sdkPackages` to name package references worth inspecting, then map those package names to local source under `sdkSources`. The core resolver is vendor-neutral; organization-specific semantics live behind detector names such as `mozu-service-client`.
 
 ```bash
 service-parade graph index

@@ -95,6 +95,99 @@ test("indexes, enriches, reviews, and plans from discovered HTTP dependencies", 
   assert.equal(plan.dependencyEdges.some((edge) => edge.targetServiceId === "fulfillment-api"), true);
 });
 
+test("indexes configured SDK source clients as outbound HTTP dependencies", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "service-parade-sdk-graph-"));
+  t.after(() => closeProjection(root));
+  await write(root, "login/Login.csproj", `<Project><ItemGroup><PackageReference Include="Mozu.AdminUser.Contracts" Version="1.0.0" /></ItemGroup></Project>`);
+  await write(root, "login/App_Start/AutoFacSetup.cs", [
+    "using Mozu.AdminUser.Contracts.Clients;",
+    "public class AutoFacSetup { }"
+  ].join("\n"));
+  await write(root, "admin/Mozu.AdminUser.Contracts/CCG.targets", [
+    "<Project>",
+    "  <Target Name=\"BuildServiceClients\">",
+    "    <Exec Command=\"$(CodeGenExe) -t $(SourceNS).MultiScopeAdminAuthTicketController -a $(ServiceAssembly) -ns $(Target_Namespace) -o $(ClientDir)\" />",
+    "  </Target>",
+    "</Project>"
+  ].join("\n"));
+  await write(root, "admin/Mozu.AdminUser.Contracts/Clients/MultiScopeAdminAuthTicketWebApiClient.cs", [
+    "namespace Mozu.AdminUser.Contracts.Clients {",
+    "  public partial class MultiScopeAdminAuthTicketWebApiClient {",
+    "    public override string ServiceId { get { return \"MultiScopeAdminAuthTicketWebApi\"; } }",
+    "    public object GetTokenInfo(string token) {",
+    "      var relpath = \"tokeninfo?responseFields=\" + Format(null, true);",
+    "      return Handler.SendAsync<string>(\"POST\", relpath, ServiceId, Options);",
+    "    }",
+    "  }",
+    "}"
+  ].join("\n"));
+
+  const catalog = await normalizeCatalog({
+    repos: [
+      { id: "login", path: "login", httpDiscovery: { sdkPackages: ["Mozu.*.Contracts"] } },
+      { id: "admin", path: "admin" }
+    ],
+    services: [
+      { id: "login-api", repoId: "login" },
+      { id: "admin-user-api", repoId: "admin" }
+    ],
+    sdkSources: [{
+      id: "admin-user-contract-clients",
+      packages: ["Mozu.AdminUser.Contracts", "Mozu.AdminUser.Contracts.Clients"],
+      source: "admin/Mozu.AdminUser.Contracts",
+      targetServiceId: "admin-user-api",
+      detector: "mozu-service-client",
+      options: { clientDir: "Clients", codegenTargets: "CCG.targets" }
+    }]
+  }, root);
+
+  const index = await indexGraph(root, catalog);
+  assert.equal(index.facts, 2);
+  const enrich = await enrichGraph(root, catalog);
+  assert.equal(enrich.dependencies, 1);
+  assert.equal(enrich.pending, 0);
+  const artifact = await loadDependencyArtifact(root);
+  assert.ok(artifact);
+  assert.equal(artifact.dependencies[0].sourceServiceId, "login-api");
+  assert.equal(artifact.dependencies[0].targetServiceId, "admin-user-api");
+  assert.equal(artifact.dependencies[0].httpMethod, "POST");
+  assert.equal(artifact.dependencies[0].endpointPath, "/MultiScopeAdminAuthTicketWebApi/tokeninfo");
+  assert.equal(artifact.dependencies[0].evidence.derivedFrom?.packageName, "Mozu.AdminUser.Contracts");
+  assert.equal(artifact.dependencies[0].evidence.derivedFrom?.consumerFile, "login/Login.csproj");
+});
+
+test("does not scan SDK sources without a repo package opt-in", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "service-parade-sdk-disabled-"));
+  t.after(() => closeProjection(root));
+  await write(root, "login/Login.csproj", `<Project><ItemGroup><PackageReference Include="Mozu.AdminUser.Contracts" Version="1.0.0" /></ItemGroup></Project>`);
+  await write(root, "admin/Mozu.AdminUser.Contracts/CCG.targets", "<Project />");
+  await write(root, "admin/Mozu.AdminUser.Contracts/Clients/MultiScopeAdminAuthTicketWebApiClient.cs", [
+    "public partial class MultiScopeAdminAuthTicketWebApiClient {",
+    "  public override string ServiceId { get { return \"MultiScopeAdminAuthTicketWebApi\"; } }",
+    "}"
+  ].join("\n"));
+  const catalog = await normalizeCatalog({
+    repos: [
+      { id: "login", path: "login" },
+      { id: "admin", path: "admin" }
+    ],
+    services: [
+      { id: "login-api", repoId: "login" },
+      { id: "admin-user-api", repoId: "admin" }
+    ],
+    sdkSources: [{
+      id: "admin-user-contract-clients",
+      packages: ["Mozu.AdminUser.Contracts"],
+      source: "admin/Mozu.AdminUser.Contracts",
+      targetServiceId: "admin-user-api",
+      detector: "mozu-service-client"
+    }]
+  }, root);
+
+  const index = await indexGraph(root, catalog);
+  assert.equal(index.facts, 0);
+});
+
 async function write(root: string, relative: string, content: string): Promise<void> {
   const file = path.join(root, relative);
   await mkdir(path.dirname(file), { recursive: true });

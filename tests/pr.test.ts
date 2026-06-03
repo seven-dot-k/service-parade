@@ -79,6 +79,7 @@ function fixture(): { catalog: NormalizedCatalog; changeSet: ChangeSet; workspac
       service("billing-api", "billing", root),
       service("identity-api", "identity", root)
     ],
+    sdkSources: [],
     commands: []
   };
   const changeSet: ChangeSet = {
@@ -125,7 +126,8 @@ function repo(id: string, root: string): NormalizedCatalog["repos"][number] {
     absolutePath: path.join(root, id),
     defaultBranch: "main",
     inferred: { languages: ["typescript"], manifests: [], dockerCompose: [] },
-    commands: []
+    commands: [],
+    httpDiscovery: { sdkPackages: [] }
   };
 }
 

@@ -9,6 +9,7 @@ import { detectFacts } from "./detectors.ts";
 import { sha256 } from "./hash.ts";
 import { supportsAnalysis, parseSource } from "./parser.ts";
 import { resolveGraph, resolveGraphDb } from "./paths.ts";
+import { detectSdkFacts, discoverSdkAnalysisFiles, type SdkAnalysisFile } from "./sdk.ts";
 import { GraphStorage } from "./storage.ts";
 import type { GraphIndexManifest } from "./types.ts";
 
@@ -33,6 +34,7 @@ export async function indexGraph(root: string, catalog: NormalizedCatalog): Prom
     const cached = storage.getFileHashes();
     const files = (await Promise.all(catalog.services.map((service) => discoverServiceFiles(catalog, service))))
       .flat()
+      .concat((await Promise.all(catalog.services.map((service) => discoverSdkAnalysisFiles(catalog, service)))).flat())
       .sort((a, b) => a.id.localeCompare(b.id));
     const currentIds = new Set(files.map((file) => file.id));
     let facts = 0;
@@ -47,7 +49,15 @@ export async function indexGraph(root: string, catalog: NormalizedCatalog): Prom
         continue;
       }
       parseSource(file.relativePath, content);
-      const detected = detectFacts({ serviceId: file.serviceId, file: file.relativePath, content });
+      const detected = isSdkAnalysisFile(file)
+        ? detectSdkFacts({
+          serviceId: file.serviceId,
+          file: file.relativePath,
+          content,
+          sdkSource: file.sdkSource,
+          packageUsage: file.packageUsage
+        })
+        : detectFacts({ serviceId: file.serviceId, file: file.relativePath, content });
       storage.replaceFile({ id: file.id, serviceId: file.serviceId, path: file.relativePath, contentHash }, detected);
       parsed += 1;
     }
@@ -93,6 +103,10 @@ async function discoverServiceFiles(
       const relativePath = toPosix(path.relative(catalog.root, absolutePath));
       return { id: `${service.id}:${relativePath}`, serviceId: service.id, absolutePath, relativePath };
     });
+}
+
+function isSdkAnalysisFile(file: unknown): file is SdkAnalysisFile {
+  return typeof file === "object" && file !== null && "sdkSource" in file;
 }
 
 async function gitFiles(root: string): Promise<string[]> {

@@ -80,7 +80,8 @@ function fixture(root: string): { catalog: NormalizedCatalog; changeSet: ChangeS
       defaultBranch: "main",
       owner: "payments",
       inferred: { languages: ["typescript"], manifests: [], dockerCompose: [] },
-      commands: [repoCommand]
+      commands: [repoCommand],
+      httpDiscovery: { sdkPackages: [] }
     }],
     services: [{
       id: "billing-api",
@@ -93,6 +94,7 @@ function fixture(root: string): { catalog: NormalizedCatalog; changeSet: ChangeS
       baseUrls: [],
       commands: [serviceCommand]
     }],
+    sdkSources: [],
     commands: []
   };
   const changeSet: ChangeSet = {
