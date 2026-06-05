@@ -1,9 +1,13 @@
 import { createServer, type Server } from "node:http";
 import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import type { NormalizedCatalog } from "../types.ts";
 import { stableJson } from "../fs.ts";
 import { getGraphStatus, listDependencies, listEndpoints } from "./query.ts";
-import { resolveGraphDb } from "./paths.ts";
+import { resolveGraph, resolveGraphDb } from "./paths.ts";
+
+const require = createRequire(import.meta.url);
 
 export type GraphPreviewOptions = {
   host?: string;
@@ -24,6 +28,36 @@ export type GraphPreviewModel = {
 export type GraphPreviewServer = {
   server: Server;
   url: string;
+};
+
+export type ProjectionPreviewModel = {
+  generatedAt: string;
+  counts: {
+    nodes: number;
+    edges: number;
+  };
+  nodes: Array<{
+    data: {
+      id: string;
+      label: string;
+      kind: string;
+      serviceId?: string;
+      file?: string;
+      line?: number;
+      rawId?: string;
+      properties?: unknown;
+    };
+  }>;
+  edges: Array<{
+    data: {
+      id: string;
+      source: string;
+      target: string;
+      kind: "contains" | "consumes_endpoint";
+      label: string;
+      properties?: unknown;
+    };
+  }>;
 };
 
 export async function buildGraphPreviewModel(root: string, catalog: NormalizedCatalog): Promise<GraphPreviewModel> {
@@ -69,6 +103,18 @@ export async function startGraphPreview(
         response.end(stableJson(model));
         return;
       }
+      if (request.url === "/api/projection") {
+        const model = await buildProjectionPreviewModel(root);
+        response.writeHead(200, { "cache-control": "no-store", "content-type": "application/json; charset=utf-8" });
+        response.end(stableJson(model));
+        return;
+      }
+      if (request.url === "/vendor/cytoscape.min.js") {
+        const file = require.resolve("cytoscape/dist/cytoscape.min.js");
+        response.writeHead(200, { "cache-control": "no-store", "content-type": "text/javascript; charset=utf-8" });
+        response.end(await readFile(file, "utf8"));
+        return;
+      }
       if (request.url === "/" || request.url === "/index.html") {
         response.writeHead(200, { "cache-control": "no-store", "content-type": "text/html; charset=utf-8" });
         response.end(renderGraphPreviewHtml());
@@ -92,6 +138,14 @@ export async function startGraphPreview(
   return { server, url: `http://${host}:${address.port}` };
 }
 
+export async function buildProjectionPreviewModel(root: string): Promise<ProjectionPreviewModel> {
+  const artifactPath = resolveGraph(root, "projection-preview.json");
+  if (!existsSync(artifactPath)) {
+    return { generatedAt: new Date().toISOString(), counts: { nodes: 0, edges: 0 }, nodes: [], edges: [] };
+  }
+  return JSON.parse(await readFile(artifactPath, "utf8")) as ProjectionPreviewModel;
+}
+
 export function renderGraphPreviewHtml(): string {
   return `<!doctype html>
 <html lang="en">
@@ -107,7 +161,7 @@ export function renderGraphPreviewHtml(): string {
     h1 { margin: 0 0 6px; font-size: 28px; letter-spacing: -.04em; }
     p { margin: 0; color: #a7b4d6; }
     .badge { border: 1px solid #334155; border-radius: 999px; padding: 7px 11px; color: #cbd5e1; background: #111827cc; }
-    .panel { border: 1px solid #263758; border-radius: 16px; background: #0f172acc; box-shadow: 0 18px 60px #02061766; overflow: hidden; }
+    .panel { border: 1px solid #263758; border-radius: 16px; background: #0f172acc; box-shadow: 0 18px 60px #02061766; overflow: hidden; margin-bottom: 18px; }
     #summary { display: flex; flex-wrap: wrap; gap: 10px; padding: 14px 16px; border-bottom: 1px solid #263758; }
     .metric { color: #bfdbfe; font-size: 13px; }
     svg { display: block; width: 100%; min-height: 560px; }
@@ -117,6 +171,24 @@ export function renderGraphPreviewHtml(): string {
     .node-title { fill: #eff6ff; font-size: 15px; font-weight: 700; text-anchor: middle; }
     .node-meta { fill: #a7b4d6; font-size: 12px; text-anchor: middle; }
     .empty { fill: #a7b4d6; text-anchor: middle; font-size: 16px; }
+    .panel-title { padding: 14px 16px 0; font-size: 14px; font-weight: 700; color: #eff6ff; }
+    .toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 14px 16px; border-bottom: 1px solid #263758; }
+    .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .icon-button { border: 1px solid #334155; border-radius: 999px; padding: 7px 12px; color: #e7ecff; background: #111827; font: inherit; font-size: 13px; cursor: pointer; }
+    .icon-button:hover { border-color: #60a5fa; color: #bfdbfe; }
+    .filters { display: flex; flex-wrap: wrap; gap: 8px; }
+    .filters label { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #334155; border-radius: 999px; padding: 6px 10px; color: #cbd5e1; background: #111827cc; font-size: 13px; }
+    .filters input { accent-color: #60a5fa; }
+    select { border: 1px solid #334155; border-radius: 999px; padding: 7px 12px; color: #e7ecff; background: #111827; font: inherit; font-size: 13px; }
+    .projection-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; min-height: 680px; }
+    #projection { min-height: 680px; background: #08111f; }
+    #details { border-left: 1px solid #263758; padding: 16px; color: #cbd5e1; overflow: auto; }
+    #details h2 { margin: 0 0 10px; color: #eff6ff; font-size: 16px; }
+    #details pre { white-space: pre-wrap; word-break: break-word; color: #a7b4d6; font-size: 12px; line-height: 1.45; margin: 0; }
+    @media (max-width: 860px) {
+      .projection-grid { grid-template-columns: 1fr; }
+      #details { border-left: 0; border-top: 1px solid #263758; max-height: 320px; }
+    }
   </style>
 </head>
 <body>
@@ -129,7 +201,35 @@ export function renderGraphPreviewHtml(): string {
       <div id="summary"></div>
       <svg id="graph" viewBox="0 0 1120 560" role="img" aria-label="Service dependency graph"></svg>
     </section>
+    <section class="panel">
+      <div class="panel-title">Projection Explorer</div>
+      <div class="toolbar">
+        <div id="projection-summary" class="metric">Loading projection...</div>
+        <div class="controls">
+          <select id="layout-mode" aria-label="Projection layout">
+            <option value="cose" selected>cose</option>
+            <option value="breadthfirst">breadthfirst</option>
+            <option value="concentric">concentric</option>
+            <option value="circle">circle</option>
+            <option value="grid">grid</option>
+          </select>
+          <button class="icon-button" id="readable-zoom" type="button">Readable zoom</button>
+          <button class="icon-button" id="fit-graph" type="button">Fit graph</button>
+          <div class="filters">
+            <label><input type="checkbox" value="service" checked>service</label>
+            <label><input type="checkbox" value="endpoint" checked>endpoint</label>
+            <label><input type="checkbox" value="http_call" checked>http call</label>
+            <label><input type="checkbox" value="config_key" checked>config key</label>
+          </div>
+        </div>
+      </div>
+      <div class="projection-grid">
+        <div id="projection"></div>
+        <aside id="details"><h2>Selection</h2><pre>Click a node or edge to inspect its properties.</pre></aside>
+      </div>
+    </section>
   </main>
+  <script src="/vendor/cytoscape.min.js"></script>
   <script>
     const svg = document.querySelector("#graph");
     const ns = "http://www.w3.org/2000/svg";
@@ -210,6 +310,133 @@ export function renderGraphPreviewHtml(): string {
       document.querySelector("#freshness").textContent = "Preview failed";
       add("text", { class: "empty", x: 560, y: 280 }, error.message);
     });
+
+    const details = document.querySelector("#details pre");
+    const projectionSummary = document.querySelector("#projection-summary");
+    const filters = [...document.querySelectorAll(".filters input")];
+    const layoutMode = document.querySelector("#layout-mode");
+    const readableZoom = document.querySelector("#readable-zoom");
+    const fitGraph = document.querySelector("#fit-graph");
+    let projectionData = null;
+    let cy = null;
+
+    const layoutOptions = {
+      cose: { name: "cose", animate: false, nodeRepulsion: 9000, idealEdgeLength: 92, componentSpacing: 90 },
+      breadthfirst: { name: "breadthfirst", animate: false, directed: true, spacingFactor: 1.25, roots: '[kind = "service"]' },
+      concentric: {
+        name: "concentric",
+        animate: false,
+        minNodeSpacing: 32,
+        concentric: (node) => node.connectedEdges().length + (node.data("kind") === "service" ? 100 : 0),
+        levelWidth: () => 12
+      },
+      circle: { name: "circle", animate: false, spacingFactor: 1.15 },
+      grid: { name: "grid", animate: false, avoidOverlap: true, avoidOverlapPadding: 18 }
+    };
+
+    fetch("/api/projection").then((response) => response.json()).then((data) => {
+      projectionData = data;
+      projectionSummary.textContent = data.counts.nodes + " nodes · " + data.counts.edges + " relations";
+      cy = cytoscape({
+        container: document.querySelector("#projection"),
+        elements: [...data.nodes, ...data.edges],
+        wheelSensitivity: 0.18,
+        style: [
+          { selector: "node", style: {
+            "background-color": "#2563eb",
+            "border-color": "#bfdbfe",
+            "border-width": 1,
+            "color": "#e7ecff",
+            "font-size": 9,
+            "label": "data(label)",
+            "text-outline-color": "#08111f",
+            "text-outline-width": 3,
+            "text-valign": "center",
+            "text-halign": "center",
+            "width": 34,
+            "height": 34
+          }},
+          { selector: 'node[kind = "service"]', style: { "background-color": "#22c55e", "shape": "round-rectangle", "width": 92, "height": 38, "font-size": 11 }},
+          { selector: 'node[kind = "endpoint"]', style: { "background-color": "#38bdf8", "shape": "hexagon" }},
+          { selector: 'node[kind = "http_call"]', style: { "background-color": "#f59e0b", "shape": "vee" }},
+          { selector: 'node[kind = "config_key"]', style: { "background-color": "#a78bfa", "shape": "diamond" }},
+          { selector: "edge", style: {
+            "curve-style": "bezier",
+            "line-color": "#475569",
+            "target-arrow-color": "#475569",
+            "target-arrow-shape": "triangle",
+            "width": 1.5,
+            "label": "data(label)",
+            "font-size": 7,
+            "color": "#bfdbfe",
+            "text-background-color": "#08111f",
+            "text-background-opacity": 0.8,
+            "text-background-padding": 2
+          }},
+          { selector: 'edge[kind = "consumes_endpoint"]', style: { "line-color": "#60a5fa", "target-arrow-color": "#60a5fa", "width": 2.4 }},
+          { selector: ":selected", style: { "border-color": "#fef3c7", "border-width": 4, "line-color": "#fef3c7", "target-arrow-color": "#fef3c7" }}
+        ],
+        layout: layoutOptions.cose
+      });
+      cy.minZoom(0.18);
+      cy.maxZoom(3.5);
+      cy.on("tap", "node, edge", (event) => {
+        const item = event.target.data();
+        details.textContent = JSON.stringify(item, null, 2);
+      });
+      layoutMode.addEventListener("change", runProjectionLayout);
+      readableZoom.addEventListener("click", setReadableViewport);
+      fitGraph.addEventListener("click", fitVisibleGraph);
+      filters.forEach((input) => input.addEventListener("change", applyProjectionFilters));
+      applyProjectionFilters();
+      setTimeout(setReadableViewport, 120);
+    }).catch((error) => {
+      projectionSummary.textContent = "Projection failed";
+      details.textContent = error.message;
+    });
+
+    function applyProjectionFilters() {
+      if (!cy || !projectionData) return;
+      const enabled = new Set(filters.filter((input) => input.checked).map((input) => input.value));
+      cy.batch(() => {
+        cy.nodes().forEach((node) => node.style("display", enabled.has(node.data("kind")) ? "element" : "none"));
+        cy.edges().forEach((edge) => {
+          const visible = edge.source().style("display") !== "none" && edge.target().style("display") !== "none";
+          edge.style("display", visible ? "element" : "none");
+        });
+      });
+    }
+
+    function runProjectionLayout() {
+      if (!cy) return;
+      applyProjectionFilters();
+      const visible = cy.elements().filter((element) => element.style("display") !== "none");
+      visible.layout(layoutOptions[layoutMode.value] || layoutOptions.cose).run();
+      setTimeout(setReadableViewport, 80);
+    }
+
+    function visibleElements() {
+      return cy ? cy.elements().filter((element) => element.style("display") !== "none") : null;
+    }
+
+    function fitVisibleGraph() {
+      const visible = visibleElements();
+      if (!visible || visible.empty()) return;
+      cy.fit(visible, 64);
+    }
+
+    function setReadableViewport() {
+      if (!cy) return;
+      const visible = visibleElements();
+      if (!visible || visible.empty()) return;
+      const services = visible.nodes('[kind = "service"]');
+      const focus = services.nonempty() ? services : visible.nodes().slice(0, Math.min(12, visible.nodes().length));
+      cy.center(focus);
+      cy.zoom({
+        level: Math.max(0.72, Math.min(1.15, cy.zoom())),
+        renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 }
+      });
+    }
   </script>
 </body>
 </html>`;

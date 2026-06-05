@@ -26,6 +26,7 @@
     "@modelcontextprotocol/sdk": "1.29.0",
     "@surrealdb/node": "3.0.3",
     "better-sqlite3": "12.10.0",
+    "cytoscape": "^3.34.0",
     "surrealdb": "2.0.3",
     "tree-sitter": "0.21.1",
     "tree-sitter-c-sharp": "0.23.1",
