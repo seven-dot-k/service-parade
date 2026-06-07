@@ -77,7 +77,7 @@ export class GraphStorage {
           content_hash = excluded.content_hash,
           analyzed_at = excluded.analyzed_at
       `).run(file.id, file.serviceId, file.path, file.contentHash, new Date().toISOString());
-      const insertFact = this.db.prepare("INSERT INTO facts(id, file_id, kind, data) VALUES (?, ?, ?, ?)");
+      const insertFact = this.db.prepare("INSERT OR IGNORE INTO facts(id, file_id, kind, data) VALUES (?, ?, ?, ?)");
       for (const fact of facts) {
         insertFact.run(fact.id, file.id, fact.kind, JSON.stringify(fact));
       }
@@ -124,7 +124,7 @@ export class GraphStorage {
   replacePendingLinks(items: PendingLink[]): void {
     const run = this.db.transaction(() => {
       this.db.prepare("DELETE FROM pending_links").run();
-      const insert = this.db.prepare("INSERT INTO pending_links(id, signature, status, data) VALUES (?, ?, ?, ?)");
+      const insert = this.db.prepare("INSERT OR IGNORE INTO pending_links(id, signature, status, data) VALUES (?, ?, ?, ?)");
       for (const item of items) {
         insert.run(item.id, item.signature, item.reviewStatus, JSON.stringify(item));
       }
